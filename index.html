@@ -1,0 +1,2259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Six Dales Timekeeper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+:root{
+  --bg:#0e1410;--surface:#162018;--surface2:#1e2b20;--border:#2a3e2c;
+  --green:#5aba6a;--green-dim:#2d6b35;--amber:#e8a84a;--amber-dim:#7a5520;
+  --red:#e05c5c;--red-dim:#6b2d2d;--text:#d6e8d8;--text-dim:#6b8a6e;--text-muted:#3d5440;
+  --three:#4ab8ba;--three-dim:rgba(74,184,186,0.25);
+  --junior:#b87fd4;--junior-dim:rgba(184,127,212,0.25);
+  --senior:#e8a84a;--senior-dim:rgba(232,168,74,0.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:repeating-radial-gradient(circle at 30% 40%,transparent 0,transparent 40px,rgba(90,186,106,.025) 40px,rgba(90,186,106,.025) 41px);pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:20px 16px;}
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border);}
+.logo h1{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;line-height:1;}
+.logo h1 span{color:var(--green);}
+.logo p{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:4px;}
+.clock{font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:500;color:var(--green);}
+.clock-label{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;}
+.sync-bar{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap;}
+.sync-bar input{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:'DM Mono',monospace;font-size:.72rem;color:var(--text);outline:none;}
+.sync-bar input:focus{border-color:var(--green-dim);}
+.sync-bar input::placeholder{color:var(--text-muted);}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+.sync-dot.ok{background:var(--green);}
+.sync-dot.err{background:var(--red);}
+.sync-dot.busy{background:var(--amber);}
+.sync-label{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--text-muted);}
+.tabs{display:flex;gap:3px;margin-bottom:18px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.tab-btn{padding:8px 13px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;border-radius:6px 6px 0 0;}
+.tab-btn:hover{color:var(--text);background:var(--surface);}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--green);background:var(--surface);}
+.badge{display:inline-block;font-size:.55rem;font-family:'DM Mono',monospace;padding:1px 5px;border-radius:8px;margin-left:4px;background:var(--surface2);color:var(--text-dim);}
+.tab-btn.three .badge{background:var(--three-dim);color:var(--three);}
+.tab-btn.junior .badge{background:var(--junior-dim);color:var(--junior);}
+.tab-btn.senior .badge{background:var(--senior-dim);color:var(--senior);}
+.panel{display:none;}.panel.active{display:block;}
+.btn{padding:8px 14px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;transition:all .15s;}
+.btn-green{background:var(--green);color:#0e1410;}.btn-green:hover{background:#6ed47e;}
+.btn-sm{padding:5px 10px;font-size:.71rem;border-radius:6px;}
+.btn-xs{padding:3px 7px;font-size:.66rem;border-radius:5px;}
+.btn-amber{background:var(--amber);color:#0e1410;}
+.btn-red{background:transparent;border:1px solid var(--red-dim);color:var(--red);}
+.btn-dim{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}.btn-dim:hover{background:var(--border);}
+.btn-three{background:rgba(74,184,186,.12);color:var(--three);border:1px solid var(--three-dim);}
+.btn-junior{background:rgba(184,127,212,.12);color:var(--junior);border:1px solid var(--junior-dim);}
+.btn-senior{background:rgba(232,168,74,.12);color:var(--senior);border:1px solid var(--senior-dim);}
+.inp{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:.86rem;color:var(--text);outline:none;transition:border-color .15s;}
+.inp::placeholder{color:var(--text-muted);}.inp:focus{border-color:var(--green-dim);}
+.inp-sm{padding:6px 10px;font-size:.8rem;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;}
+.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+.bib-picker{display:flex;gap:5px;flex-wrap:wrap;}
+.bib-pill{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.bib-pill:hover{border-color:var(--green-dim);color:var(--green);}
+.bib-pill.selected{background:var(--green);color:#0e1410;border-color:var(--green);}
+.bib-pill.used{opacity:.25;cursor:not-allowed;pointer-events:none;}
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.team-card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--border);}
+.type-badge{font-family:'DM Mono',monospace;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:.08em;flex-shrink:0;}
+.type-TD{background:var(--three-dim);color:var(--three);border:1px solid rgba(74,184,186,.3);}
+.type-JR{background:var(--junior-dim);color:var(--junior);border:1px solid rgba(184,127,212,.3);}
+.type-SR{background:var(--senior-dim);color:var(--senior);border:1px solid rgba(232,168,74,.3);}
+.team-name-text{font-weight:600;font-size:.93rem;flex:1;}
+.team-card-body{padding:10px 14px;}
+.member-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,62,44,.3);font-size:.81rem;}
+.member-row:last-child{border-bottom:none;}
+.mbib{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:700;min-width:80px;}
+.mbib.TD{color:var(--three);}.mbib.JR{color:var(--junior);}.mbib.SR{color:var(--senior);}
+.mname{flex:1;}
+.team-card-footer{padding:10px 14px;border-top:1px solid var(--border);}
+.team-add-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+.team-empty{color:var(--text-muted);font-size:.76rem;padding:8px 0;text-align:center;}
+.teams-empty-state{text-align:center;padding:50px 20px;color:var(--text-muted);font-size:.83rem;grid-column:1/-1;}
+.signin-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.si-stat{flex:1;min-width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;}
+.si-stat .val{font-family:'DM Mono',monospace;font-size:1.2rem;font-weight:500;}
+.si-stat .lbl{font-size:.58rem;font-family:'DM Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+.val-green{color:var(--green);}.val-amber{color:var(--amber);}
+.signin-body{display:grid;grid-template-columns:1fr 300px;gap:18px;}
+@media(max-width:800px){.signin-body{grid-template-columns:1fr;}}
+.signin-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:16px;}
+.signin-box h3{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:var(--green);}
+.si-type-tabs{display:flex;gap:6px;margin-bottom:12px;}
+.si-type-tab{flex:1;padding:10px 4px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);font-family:'DM Mono',monospace;font-size:.85rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;color:var(--text-dim);}
+.si-type-tab .tab-count{display:block;font-size:.6rem;font-weight:400;color:var(--text-muted);margin-top:2px;}
+.si-type-tab.active-SR{border-color:var(--senior);background:rgba(232,168,74,.12);color:var(--senior);}
+.si-type-tab.active-JR{border-color:var(--junior);background:rgba(184,127,212,.12);color:var(--junior);}
+.si-type-tab.active-TD{border-color:var(--three);background:rgba(74,184,186,.12);color:var(--three);}
+.si-team-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 250px);overflow-y:auto;}
+.si-team-group{border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.si-team-hdr{display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);}
+.si-team-hdr-code{font-family:'DM Mono',monospace;font-weight:700;font-size:.95rem;}
+.si-team-hdr-code.SR{color:var(--senior);}
+.si-team-hdr-code.JR{color:var(--junior);}
+.si-team-hdr-code.TD{color:var(--three);}
+.si-team-hdr-name{flex:1;font-size:.9rem;font-weight:700;color:var(--text);}
+.si-team-hdr-prog{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--text-dim);}
+.si-team-hdr-prog.all-in{color:var(--green);}
+.si-members{display:flex;flex-direction:column;background:var(--surface2);}
+.si-member-btn{display:flex;align-items:center;gap:14px;width:100%;padding:12px 14px;border:none;border-bottom:1px solid var(--border);background:transparent;cursor:pointer;color:var(--text);text-align:left;transition:background .12s;}
+.si-member-btn:last-child{border-bottom:none;}
+.si-member-btn:hover{background:rgba(255,255,255,.05);}
+.si-member-btn.in{background:rgba(90,186,106,.07);}
+.si-member-bid{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:700;min-width:86px;flex-shrink:0;}
+.si-member-btn.SR .si-member-bid{color:var(--senior);}
+.si-member-btn.JR .si-member-bid{color:var(--junior);}
+.si-member-btn.TD .si-member-bid{color:var(--three);}
+.si-member-name{font-size:.95rem;font-weight:700;color:#fff;flex:1;text-align:left;}
+.si-member-btn.in .si-member-name{color:var(--text-dim);}
+.si-member-time{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--green);white-space:nowrap;}
+.si-member-check{width:28px;height:28px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.85rem;flex-shrink:0;transition:all .15s;color:transparent;}
+.si-member-btn.in .si-member-check{background:var(--green);border-color:var(--green);color:#0e1410;}
+.bib-empty{color:var(--text-muted);font-size:.82rem;padding:20px;text-align:center;}
+.signed-in-list{display:flex;flex-direction:column;gap:6px;max-height:480px;overflow-y:auto;}
+.si-item{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;}
+@keyframes flashGreen{0%{background:rgba(90,186,106,.25);}100%{background:var(--surface2);}}
+.just-signed{animation:flashGreen .7s ease;border-color:var(--green-dim)!important;}
+.si-bib{font-family:'DM Mono',monospace;font-weight:700;font-size:.85rem;white-space:nowrap;}
+.si-bib.SR{color:var(--senior);}.si-bib.JR{color:var(--junior);}.si-bib.TD{color:var(--three);}
+.si-name{flex:1;font-size:.82rem;font-weight:500;color:var(--text);}
+.si-time-lbl{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--green);}
+.si-walk-lbl{font-size:.63rem;color:var(--text-muted);}
+.nsi-list{display:flex;flex-direction:column;gap:4px;max-height:180px;overflow-y:auto;margin-top:8px;}
+.nsi-item{display:flex;align-items:center;gap:8px;padding:7px 12px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);}
+.nsi-bib{font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;min-width:58px;}
+.nsi-bib.SR{color:var(--senior);}.nsi-bib.JR{color:var(--junior);}.nsi-bib.TD{color:var(--three);}
+.nsi-name{flex:1;font-size:.82rem;font-weight:500;color:var(--text);}
+.so-table{width:100%;border-collapse:collapse;font-size:.81rem;}
+.so-table th{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.so-table td{padding:7px 10px;border-bottom:1px solid rgba(42,62,44,.3);color:var(--text);}
+.walk-header{display:flex;align-items:center;gap:14px;margin-bottom:15px;padding:12px 16px;border-radius:10px;border:1px solid;flex-wrap:wrap;}
+.walk-header.three{border-color:var(--three-dim);background:rgba(74,184,186,.05);}
+.walk-header.junior{border-color:var(--junior-dim);background:rgba(184,127,212,.05);}
+.walk-header.senior{border-color:var(--senior-dim);background:rgba(232,168,74,.05);}
+.walk-title{font-family:'Playfair Display',serif;font-size:1.05rem;}
+.walk-title.three{color:var(--three);}.walk-title.junior{color:var(--junior);}.walk-title.senior{color:var(--senior);}
+.walk-distance{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--text-dim);margin-top:2px;}
+.walk-stats{display:flex;gap:14px;margin-left:auto;}
+.walk-stat .val{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:500;}
+.walk-stat .lbl{font-size:.55rem;font-family:'DM Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;}
+.route-bar{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.route-cp{font-family:'DM Mono',monospace;font-size:.59rem;padding:4px 10px;border-radius:16px;border:1px solid var(--border);color:var(--text-dim);background:var(--surface);text-transform:uppercase;}
+.route-cp.start{color:var(--green);border-color:var(--green-dim);background:rgba(90,186,106,.08);}
+.route-cp.ft{color:var(--three);border-color:var(--three-dim);background:rgba(74,184,186,.08);}
+.route-cp.fj{color:var(--junior);border-color:var(--junior-dim);background:rgba(184,127,212,.08);}
+.route-cp.fs{color:var(--senior);border-color:var(--senior-dim);background:rgba(232,168,74,.08);}
+.route-arrow{color:var(--text-muted);font-size:.6rem;}
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:660px;}
+thead tr{border-bottom:1px solid var(--border);}
+th{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding:7px 10px;text-align:left;font-weight:400;}
+tbody tr{border-bottom:1px solid rgba(42,62,44,.4);}
+tbody tr:hover{background:rgba(255,255,255,.015);}
+td{padding:8px 10px;font-size:.81rem;vertical-align:middle;color:var(--text);}
+td.bib-cell{font-family:'DM Mono',monospace;font-weight:700;font-size:.88rem;}
+td.bib-cell.three{color:var(--three);}td.bib-cell.junior{color:var(--junior);}td.bib-cell.senior{color:var(--senior);}
+td.mono{font-family:'DM Mono',monospace;font-size:.76rem;color:var(--text-dim);}
+td.elapsed{font-family:'DM Mono',monospace;font-weight:500;color:var(--amber);}
+td.elapsed.done{color:var(--green);}
+.status-badge{display:inline-block;font-family:'DM Mono',monospace;font-size:.56rem;padding:3px 7px;border-radius:10px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+.badge-waiting{background:rgba(42,62,44,.5);color:var(--text-muted);border:1px solid var(--border);}
+.badge-present{background:rgba(90,186,106,.08);color:var(--green);border:1px solid var(--green-dim);}
+.badge-on-course{background:rgba(232,168,74,.1);color:var(--amber);border:1px solid var(--amber-dim);}
+.badge-finished{background:rgba(90,186,106,.1);color:var(--green);border:1px solid var(--green-dim);}
+.badge-dnf{background:rgba(224,92,92,.1);color:var(--red);border:1px solid var(--red-dim);}
+.splits-row td{padding:0;background:var(--surface);}
+.splits-inner{padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.split-item{display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;min-width:85px;}
+.split-cp{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--three);margin-bottom:2px;}
+.split-clock{font-family:'DM Mono',monospace;font-size:.77rem;color:var(--text);}
+.split-elapsed{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--text-dim);}
+.split-start{border-color:var(--green-dim);}.split-start .split-cp{color:var(--green);}
+.split-finish{border-color:var(--amber-dim);}.split-finish .split-cp{color:var(--amber);}
+.results-section{margin-top:18px;border-top:1px solid var(--border);padding-top:14px;}
+.results-section h3{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:10px;}
+.podium{display:flex;gap:10px;flex-wrap:wrap;}
+.podium-card{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 12px;text-align:center;}
+.podium-card.p1{border-color:var(--amber-dim);}
+.podium-card .pos{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--text-muted);}
+.podium-card.p1 .pos{color:var(--amber);}
+.podium-card .pname{font-weight:500;font-size:.81rem;margin:3px 0 1px;}
+.podium-card .pbib{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;}
+.podium-card .pbib.three{color:var(--three);}.podium-card .pbib.junior{color:var(--junior);}.podium-card .pbib.senior{color:var(--senior);}
+.podium-card .ptime{font-family:'DM Mono',monospace;font-size:.88rem;color:var(--green);margin-top:4px;}
+.actions-row{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap;}
+.empty{text-align:center;padding:36px 20px;color:var(--text-muted);font-size:.81rem;}
+.no-results{color:var(--text-muted);font-size:.81rem;}
+
+/* MERGED TEAMS PANEL */
+.teams-signin-grid{display:grid;grid-template-columns:1fr 380px;gap:20px;align-items:start;}
+@media(max-width:900px){.teams-signin-grid{grid-template-columns:1fr;}}
+.section-label{font-family:'DM Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+details summary::-webkit-details-marker{display:none;}
+details[open] summary span:first-child{transform:rotate(45deg);}
+
+/* WALKER DATABASE */
+.wdb-toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.wdb-search{flex:2;min-width:160px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:.86rem;color:var(--text);outline:none;}
+.wdb-search::placeholder{color:var(--text-muted);}
+.wdb-search:focus{border-color:var(--green-dim);}
+.wdb-filter{display:flex;gap:6px;}
+.wdb-filter-btn{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--text-dim);font-size:.76rem;font-family:'DM Mono',monospace;cursor:pointer;transition:all .15s;}
+.wdb-filter-btn:hover{border-color:var(--green-dim);color:var(--text);}
+.wdb-filter-btn.active{border-color:var(--green);background:rgba(90,186,106,.1);color:var(--green);}
+.wdb-filter-btn.active-SR{border-color:var(--senior);background:rgba(232,168,74,.1);color:var(--senior);}
+.wdb-filter-btn.active-JR{border-color:var(--junior);background:rgba(184,127,212,.1);color:var(--junior);}
+.wdb-filter-btn.active-TD{border-color:var(--three);background:rgba(74,184,186,.1);color:var(--three);}
+.wdb-selected-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--green-dim);border-radius:10px;padding:10px 14px;margin-bottom:14px;flex-wrap:wrap;}
+.wdb-selected-bar.hidden{display:none;}
+.wdb-sel-count{font-family:'DM Mono',monospace;font-size:.8rem;color:var(--green);font-weight:500;}
+.wdb-new-team-name{flex:1;min-width:140px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:.84rem;color:var(--text);outline:none;}
+.wdb-new-team-name::placeholder{color:var(--text-muted);}
+.wdb-new-team-name:focus{border-color:var(--green-dim);}
+.wdb-table{width:100%;border-collapse:collapse;}
+.wdb-table th{font-family:'DM Mono',monospace;font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:7px 10px;text-align:left;border-bottom:1px solid var(--border);font-weight:400;}
+.wdb-table td{padding:9px 10px;border-bottom:1px solid rgba(42,62,44,.3);font-size:.84rem;color:var(--text);}
+.wdb-table tr:hover td{background:rgba(255,255,255,.02);}
+.wdb-table tr.selected td{background:rgba(90,186,106,.06);}
+.wdb-check{width:18px;height:18px;border-radius:4px;border:2px solid var(--border);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;font-size:.7rem;color:transparent;}
+.wdb-table tr.selected .wdb-check{background:var(--green);border-color:var(--green);color:#0e1410;}
+.wdb-name{font-weight:500;}
+.wdb-team{font-size:.76rem;color:var(--text-dim);}
+.wdb-type-badge{font-family:'DM Mono',monospace;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:5px;}
+.wdb-type-badge.SR{background:var(--senior-dim);color:var(--senior);}
+.wdb-type-badge.JR{background:var(--junior-dim);color:var(--junior);}
+.wdb-type-badge.TD{background:var(--three-dim);color:var(--three);}
+.wdb-in-team{font-size:.72rem;color:var(--green);font-family:'DM Mono',monospace;}
+.wdb-count{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--text-muted);margin-left:auto;}
+
+/* CHECKPOINT TABS */
+.cp-tab-btn{padding:7px 12px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:500;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;border-radius:6px 6px 0 0;white-space:nowrap;}
+.cp-tab-btn:hover{color:var(--text);background:var(--surface);}
+.cp-tab-btn.active{color:var(--text);border-bottom-color:var(--green);background:var(--surface);}
+.cp-stat-bar{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.cp-stat-box{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;font-family:'DM Mono',monospace;font-size:.8rem;}
+.cp-stat-box span{display:block;font-size:.55rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:2px;}
+.cp-walk-section{margin-bottom:20px;}
+.cp-walk-hdr{display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:8px;margin-bottom:8px;}
+.cp-walk-hdr.three{background:rgba(74,184,186,.08);border:1px solid var(--three-dim);}
+.cp-walk-hdr.junior{background:rgba(184,127,212,.08);border:1px solid var(--junior-dim);}
+.cp-walk-hdr.senior{background:rgba(232,168,74,.08);border:1px solid var(--senior-dim);}
+.cp-walk-title{font-family:'Playfair Display',serif;font-size:.95rem;font-weight:700;}
+.cp-walk-title.three{color:var(--three);}
+.cp-walk-title.junior{color:var(--junior);}
+.cp-walk-title.senior{color:var(--senior);}
+.cp-team-card{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:8px;}
+.cp-team-hdr{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.cp-team-name{font-weight:700;font-size:.9rem;flex:1;}
+.cp-times-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:12px 14px;background:var(--surface2);}
+.cp-log-btn-in{padding:7px 16px;border-radius:7px;border:none;background:rgba(90,186,106,.15);color:var(--green);font-size:.78rem;font-weight:700;cursor:pointer;}
+.cp-log-btn-in:hover{background:rgba(90,186,106,.28);}
+.cp-log-btn-out{padding:7px 16px;border-radius:7px;border:none;background:rgba(232,168,74,.12);color:var(--amber);font-size:.78rem;font-weight:700;cursor:pointer;}
+.cp-log-btn-out:hover{background:rgba(232,168,74,.24);}
+.cp-time-val-in{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:var(--green);}
+.cp-time-val-out{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;color:var(--amber);}
+.cp-clear-btn{padding:2px 8px;border-radius:5px;border:1px solid var(--red-dim);background:transparent;color:var(--red);font-size:.65rem;cursor:pointer;}
+.cp-members{border-top:1px solid var(--border);}
+.cp-member-row{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid rgba(42,62,44,.25);font-size:.82rem;}
+.cp-member-row:last-child{border-bottom:none;}
+.cp-member-bid{font-family:'DM Mono',monospace;font-weight:700;font-size:.85rem;min-width:82px;}
+.cp-member-name{flex:1;font-weight:500;color:var(--text);}
+.cp-member-split{font-family:'DM Mono',monospace;font-size:.78rem;color:var(--green);}
+.cp-member-elapsed{font-family:'DM Mono',monospace;font-size:.7rem;color:var(--text-muted);}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><h1>Six <span>Dales</span></h1><p>Event Timekeeper Console</p></div>
+    <div style="text-align:right"><div class="clock-label">Event Time</div><div class="clock" id="live-clock">--:--:--</div></div>
+  </header>
+  <div class="sync-bar">
+    <input id="gist-id" type="text" placeholder="GitHub Gist ID..." autocomplete="off">
+    <input id="gist-token" type="password" placeholder="GitHub Token..." autocomplete="off">
+    <div class="sync-dot" id="sync-dot"></div>
+    <span class="sync-label" id="sync-label">Not connected</span>
+    <button class="btn btn-dim btn-sm" id="btn-push">Push</button>
+    <button class="btn btn-dim btn-sm" id="btn-pull">Pull</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="teams">Teams &amp; Sign In <span class="badge" id="badge-teams">0</span></button>
+    <button class="tab-btn three" data-tab="three">Three Dales <span class="badge" id="badge-three">0</span></button>
+    <button class="tab-btn junior" data-tab="junior">Junior <span class="badge" id="badge-junior">0</span></button>
+    <button class="tab-btn senior" data-tab="senior">Senior <span class="badge" id="badge-senior">0</span></button>
+    <button class="tab-btn" data-tab="walkers">Walkers <span class="badge" id="badge-walkers">0</span></button>
+    <button class="tab-btn" data-tab="checkpoints">Checkpoints</button>
+  </div>
+  <div id="panel-teams" class="panel active">
+
+  <!-- ── SIGN OUT / REGISTER WALKER ──────────────────────────── -->
+  <details open style="margin-bottom:16px;">
+    <summary style="font-family:'DM Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);cursor:pointer;padding:8px 0;list-style:none;display:flex;align-items:center;gap:8px;">
+      <span style="width:18px;height:18px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:inline-flex;align-items:center;justify-content:center;font-size:.6rem;color:var(--text-muted);">+</span>
+      Register &amp; Sign Out Walkers
+      <span class="badge" id="badge-signout" style="background:var(--surface2);color:var(--text-dim);">0</span>
+    </summary>
+    <div style="margin-top:10px;">
+<div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:14px;">
+      <!-- Mode toggle -->
+      <div style="display:flex;gap:6px;margin-bottom:14px;">
+        <button class="btn btn-sm" id="reg-mode-team" data-action="reg-mode" data-mode="team" style="background:var(--green);color:#0e1410;border:none;">Register by Team</button>
+        <button class="btn btn-sm" id="reg-mode-individual" data-action="reg-mode" data-mode="individual" style="background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);">Register Individual</button>
+        <span style="margin-left:auto;"><button class="btn btn-dim btn-sm" id="btn-export-signout">Export CSV</button></span>
+      </div>
+
+      <!-- TEAM MODE -->
+      <div id="reg-team-mode">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <select class="inp" id="so-team-select" style="flex:2;min-width:200px;">
+            <option value="">-- Select a team --</option>
+          </select>
+          <input class="inp" id="so-phone" type="text" placeholder="Phone" style="flex:1;min-width:90px;">
+          <button class="btn btn-green" id="btn-signout">+ Register Team</button>
+        </div>
+        <div id="so-team-preview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;">
+          <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Members to register:</div>
+          <div id="so-team-preview-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+      </div>
+
+      <!-- INDIVIDUAL MODE -->
+      <div id="reg-individual-mode" style="display:none;">
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px;">
+          <select class="inp" id="so-ind-team" style="flex:2;min-width:200px;">
+            <option value="">-- Select a team --</option>
+          </select>
+          <select class="inp" id="so-ind-member" style="flex:1.5;min-width:160px;">
+            <option value="">-- Select member --</option>
+          </select>
+          <input class="inp" id="so-ind-phone" type="text" placeholder="Phone" style="flex:1;min-width:90px;">
+          <button class="btn btn-green" data-action="reg-individual">+ Register</button>
+        </div>
+        <div id="so-ind-preview" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 14px;">
+          <span id="so-ind-preview-text" style="font-size:.82rem;color:var(--text-dim);"></span>
+        </div>
+      </div>
+
+      <!-- Hidden fields for compatibility -->
+      <input type="hidden" id="so-bib-val">
+      <datalist id="team-dl"></datalist>
+      <div class="bib-picker" id="so-bib-picker" style="display:none;"></div>
+      <input type="hidden" id="so-name">
+      <input type="hidden" id="so-walk">
+      <input type="hidden" id="so-team">
+    </div>
+    <div class="table-wrap">
+      <table class="so-table">
+        <thead><tr><th>Walker ID</th><th>Name</th><th>Walk</th><th>Team</th><th>Signed In</th><th>Phone</th><th>Left</th><th>Registered</th><th>Status</th><th></th></tr></thead>
+        <tbody id="signout-body"><tr><td colspan="10"><div class="empty">No walkers registered yet.</div></td></tr></tbody>
+      </table>
+    </div>
+    </div>
+  </details>
+
+  <div class="divider"></div>
+
+  <!-- ── TEAMS + SIGN IN side by side ────────────────────────── -->
+  <div class="teams-signin-grid">
+
+    <!-- Left: Teams management -->
+    <div>
+      <div style="font-family:'DM Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span>Teams</span>
+        <span class="badge" id="badge-teams">0</span>
+        <button class="btn btn-dim btn-sm" data-action="export-teams" style="margin-left:auto;">Export CSV</button>
+      </div>
+      <!-- Create team form -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:14px;">
+        <div class="toolbar" style="margin-bottom:10px;">
+          <input class="inp" id="team-name-input" type="text" placeholder="Team name" style="flex:2;min-width:150px;">
+          <select class="inp" id="team-type-input" style="min-width:180px;" onchange="updateWalkerPicker()">
+            <option value="TD">TD - Three Dales (13 mi)</option>
+            <option value="JR">JR - Junior (23 mi)</option>
+            <option value="SR">SR - Senior (42 mi)</option>
+          </select>
+          <button class="btn btn-green" id="btn-add-team">+ Create Team</button>
+        </div>
+        <!-- Walker selection pool -->
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;">Select walkers to add to new team (max 7):</div>
+          <input id="walker-picker-search" type="text" placeholder="Search by name or team..." style="width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-family:'DM Sans',sans-serif;font-size:.83rem;color:var(--text);outline:none;margin-bottom:6px;">
+          <div id="walker-picker-pool" style="display:flex;flex-direction:column;max-height:220px;overflow-y:auto;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px;"></div>
+          <div id="walker-picker-selected" style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+        </div>
+      </div>
+      <!-- Filter tabs -->
+      <div id="teams-filter-bar" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;"></div>
+      <div class="teams-grid" id="teams-grid"><div class="teams-empty-state">Loading teams...</div></div>
+    </div>
+
+    <!-- Right: Sign In -->
+    <div style="position:sticky;top:20px;">
+      <div style="font-family:'DM Mono',monospace;font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-dim);margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+        <span>Sign In</span>
+        <span class="badge" id="badge-signin">0</span>
+      </div>
+      <div class="signin-stats">
+        <div class="si-stat"><div class="val val-green" id="si-count">0</div><div class="lbl">Signed In</div></div>
+        <div class="si-stat"><div class="val val-amber" id="si-pending">0</div><div class="lbl">Not Yet In</div></div>
+        <div class="si-stat"><div class="val" id="si-total">0</div><div class="lbl">Registered</div></div>
+      </div>
+      <div class="si-type-tabs">
+        <div class="si-type-tab" data-action="si-tab" data-sitype="SR" id="si-tab-SR">SR<span class="tab-count" id="si-tc-SR">0/0</span></div>
+        <div class="si-type-tab" data-action="si-tab" data-sitype="JR" id="si-tab-JR">JR<span class="tab-count" id="si-tc-JR">0/0</span></div>
+        <div class="si-type-tab" data-action="si-tab" data-sitype="TD" id="si-tab-TD">TD<span class="tab-count" id="si-tc-TD">0/0</span></div>
+      </div>
+      <div id="si-team-list" class="si-team-list" style="max-height:calc(100vh - 320px);"></div>
+      <div class="divider"></div>
+      <p style="font-size:.72rem;color:var(--text-dim);margin-bottom:6px;">Still to arrive:</p>
+      <div id="nsi-list" class="nsi-list"></div>
+      <div class="divider"></div>
+      <div style="font-family:'DM Mono',monospace;font-size:.68rem;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.08em;">Signed In Today</div>
+      <div id="signed-in-list" class="signed-in-list" style="max-height:200px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<div id="panel-three" class="panel">
+    <div class="walk-header three">
+      <div><div class="walk-title three">Three Dales</div><div class="walk-distance">13 miles - TD</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-three-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">Settle</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp ft">Kilnsey</span>
+    </div>
+    <div id="walk-three-content"></div>
+  </div>
+  <div id="panel-junior" class="panel">
+    <div class="walk-header junior">
+      <div><div class="walk-title junior">Junior Walk</div><div class="walk-distance">23 miles - JR</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-junior-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">Settle</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Kilnsey</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Mossdale</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">How Stean</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp fj">Lofthouse</span>
+    </div>
+    <div id="walk-junior-content"></div>
+  </div>
+  <div id="panel-senior" class="panel">
+    <div class="walk-header senior">
+      <div><div class="walk-title senior">Senior Walk</div><div class="walk-distance">42 miles - SR</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-senior-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">Settle</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Kilnsey</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Mossdale</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">How Stean</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Lofthouse</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Grewelthorpe</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">West Tanfield</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp">Kirklington</span><span class="route-arrow">&rarr;</span>
+      <span class="route-cp fs">Pickhill</span>
+    </div>
+    <div id="walk-senior-content"></div>
+  </div>
+  <div id="panel-walkers" class="panel">
+    <div class="wdb-toolbar">
+      <input class="wdb-search" id="wdb-search" type="text" placeholder="Search by name or team...">
+      <div class="wdb-filter">
+        <div class="wdb-filter-btn active" data-action="wdb-filter" data-filter="ALL">All</div>
+        <div class="wdb-filter-btn" data-action="wdb-filter" data-filter="SR">SR</div>
+        <div class="wdb-filter-btn" data-action="wdb-filter" data-filter="JR">JR</div>
+        <div class="wdb-filter-btn" data-action="wdb-filter" data-filter="TD">TD</div>
+      </div>
+      <span class="wdb-count" id="wdb-count">0 walkers</span>
+    </div>
+    <div class="wdb-selected-bar hidden" id="wdb-selected-bar">
+      <span class="wdb-sel-count" id="wdb-sel-count">0 selected</span>
+      <input class="wdb-new-team-name" id="wdb-new-team-name" type="text" placeholder="New team name...">
+      <button class="btn btn-green btn-sm" data-action="wdb-create-team">+ Create Team from Selected</button>
+      <button class="btn btn-dim btn-sm" data-action="wdb-clear-sel">Clear</button>
+    </div>
+    <div class="table-wrap">
+      <table class="wdb-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Name</th>
+            <th>Type</th>
+            <th>Original Team</th>
+            <th>Current Team</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="wdb-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="panel-checkpoints" class="panel">
+    <div id="cp-tabs-bar" style="display:flex;gap:3px;margin-bottom:16px;border-bottom:1px solid var(--border);flex-wrap:wrap;overflow-x:auto;"></div>
+    <div id="cp-panel-content"></div>
+  </div>
+
+  <div id="import-result" style="display:none"></div>
+</div>
+<script>
+// Six Dales Timekeeper - Clean JS using data attributes, no inline onclick quotes
+var BIBS=['A','B','C','D','E','F','G'];
+var WALKS={
+  three:{label:'Three Dales',distance:'13 miles',code:'TD',checkpoints:['Street Gate'],finish:'Kilnsey'},
+  junior:{label:'Junior',distance:'23 miles',code:'JR',checkpoints:['Street Gate','Kilnsey','Mossdale','How Stean'],finish:'Lofthouse'},
+  senior:{label:'Senior',distance:'42 miles',code:'SR',checkpoints:['Street Gate','Kilnsey','Mossdale','How Stean','Lofthouse','Grewelthorpe','West Tanfield','Kirklington'],finish:'Pickhill'}
+};
+var T2W={TD:'three',JR:'junior',SR:'senior'};
+var W2T={three:'TD',junior:'JR',senior:'SR'};
+var BUILT_IN=[{"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "A", "name": "Emily Zobel Marshall"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "B", "name": "Bethan Peter"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "C", "name": "Cora Byrd"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "D", "name": "Emilia Tamas"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "E", "name": "Rose Marshall-Brown"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "F", "name": "Darcy Wright"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "G", "name": "Ettie Carey"}, {"team": "St Chads", "type": "JR", "bib": "A", "name": "Roger Stannard"}, {"team": "St Chads", "type": "JR", "bib": "B", "name": "Jenny Stannard"}, {"team": "St Chads", "type": "JR", "bib": "C", "name": "Sophie Curwen"}, {"team": "St Chads", "type": "JR", "bib": "D", "name": "Molly Wheatley"}, {"team": "St Chads", "type": "JR", "bib": "E", "name": "Eleanor Cole"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "A", "name": "Richard Cartwright"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "B", "name": "Andrea Sendula"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "C", "name": "Maizie Shaw"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "D", "name": "Robin Shumsky"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "E", "name": "Lenny Walker"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "F", "name": "Coco Wright"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "G", "name": "Dylan Peter"}, {"team": "Cookridge Village", "type": "JR", "bib": "A", "name": "Neil Holloway"}, {"team": "Cookridge Village", "type": "JR", "bib": "B", "name": "Lee Bradford"}, {"team": "Cookridge Village", "type": "JR", "bib": "C", "name": "Oliver Witton"}, {"team": "Cookridge Village", "type": "JR", "bib": "D", "name": "Daniel Holloway"}, {"team": "Cookridge Village", "type": "JR", "bib": "E", "name": "Benjamin Witton"}, {"team": "Cookridge Village", "type": "JR", "bib": "F", "name": "Max Fraser"}, {"team": "Cookridge Village", "type": "JR", "bib": "G", "name": "Cole Bradford"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "A", "name": "Ella Mae Rutson"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "B", "name": "Nathan Ingham"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "C", "name": "James Routledge"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "D", "name": "Callum Box"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "E", "name": "Olivia Houghton"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "F", "name": "Ivan Routledge"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "G", "name": "David Hodgkinson"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "A", "name": "Kate Self"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "B", "name": "Daniel Self"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "C", "name": "Dhanesh Chandra"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "D", "name": "Olive Hammond"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "E", "name": "Matilda Gilbert"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "A", "name": "George Taylor"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "B", "name": "Freya Senior"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "C", "name": "Sophie Hodkin"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "D", "name": "Susan Clarkson"}, {"team": "Meerkat ESU", "type": "SR", "bib": "A", "name": "Cian Mcloughlin"}, {"team": "Meerkat ESU", "type": "SR", "bib": "B", "name": "Paul Jackson"}, {"team": "Meerkat ESU", "type": "SR", "bib": "C", "name": "Harry Upton"}, {"team": "Meerkat ESU", "type": "SR", "bib": "D", "name": "Harry Carter"}, {"team": "Flying Mallards", "type": "SR", "bib": "A", "name": "Joseph Marra"}, {"team": "Flying Mallards", "type": "SR", "bib": "B", "name": "Mikaela Murphy"}, {"team": "Flying Mallards", "type": "SR", "bib": "C", "name": "Yousuf Nazir"}, {"team": "Flying Mallards", "type": "SR", "bib": "D", "name": "Poppy Rose-Giblin"}, {"team": "Flying Mallards", "type": "SR", "bib": "E", "name": "Karson Wan"}, {"team": "Team Hypersonic", "type": "SR", "bib": "A", "name": "Rory Bennett"}, {"team": "Team Hypersonic", "type": "SR", "bib": "B", "name": "Callum Devereux"}, {"team": "Team Hypersonic", "type": "SR", "bib": "C", "name": "Chris Nix"}, {"team": "Team Hypersonic", "type": "SR", "bib": "D", "name": "Elizabeth Spence"}, {"team": "Team Hypersonic", "type": "SR", "bib": "E", "name": "Jakub Szczecinski"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "A", "name": "Alice Twiddle"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "B", "name": "Lucy Hall"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "C", "name": "Austin Morgan"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "D", "name": "Edward Naylor"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "E", "name": "James Naylor"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "A", "name": "Sophie Blee"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "B", "name": "George Stanley"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "C", "name": "Harry Warnes"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "D", "name": "Joseph Christian"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "E", "name": "Andrew Burns"}, {"team": "Dragons go forth", "type": "SR", "bib": "A", "name": "Joseph Bradley"}, {"team": "Dragons go forth", "type": "SR", "bib": "B", "name": "William Fawcett"}, {"team": "Dragons go forth", "type": "SR", "bib": "C", "name": "James Jackson"}, {"team": "Dragons go forth", "type": "SR", "bib": "D", "name": "Liam Rhodes"}, {"team": "Dragons go forth", "type": "SR", "bib": "E", "name": "Leo Chao"}, {"team": "Dragons go forth", "type": "SR", "bib": "F", "name": "Alex Senior"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "A", "name": "Ryan Clarkson"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "B", "name": "Evie Wood"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "C", "name": "Leon Lindley"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "D", "name": "Adam Brown"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "E", "name": "Matthew Chapman"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "A", "name": "Angus Clowes"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "B", "name": "Euan McCallion"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "C", "name": "Jack Mellor"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "D", "name": "George Phalp"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "E", "name": "Harry Stephen"}, {"team": "The femininomenons", "type": "SR", "bib": "A", "name": "Anabel Hinchliffe"}, {"team": "The femininomenons", "type": "SR", "bib": "B", "name": "Caoimhe Hinchliffe"}, {"team": "The femininomenons", "type": "SR", "bib": "C", "name": "Rhiannon Sprenger"}, {"team": "The femininomenons", "type": "SR", "bib": "D", "name": "Eva Wigzell"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "A", "name": "Thomas Sheen"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "B", "name": "Eirlys Staley"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "C", "name": "Jack Clarke"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "D", "name": "Eoin D'Mello"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "E", "name": "Morgan Harvey"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "A", "name": "Jesse Sprenger"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "B", "name": "Joseph Livermore"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "C", "name": "Henry Vasey-Wright"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "D", "name": "Josh Drew"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "E", "name": "Reuben Stannard"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "A", "name": "Albert Hydes"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "B", "name": "Alfie Warrington"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "C", "name": "Zak Kitson"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "D", "name": "Lucas Hawkins"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "A", "name": "Alex Broadbridge"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "B", "name": "Rohan Bennett"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "C", "name": "Archy Lowe"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "D", "name": "Alex Pattie"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "E", "name": "Sophie Rees"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "A", "name": "Cerys Bennett"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "B", "name": "Kian Davis"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "C", "name": "Zach Evans"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "D", "name": "Noah Glynn"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "E", "name": "Noah Murray"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "F", "name": "Sam Bartle"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "A", "name": "Elliot Foster"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "B", "name": "Oliver Megginson"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "C", "name": "Owen Dart"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "D", "name": "Isla Doyle"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "E", "name": "Merlin Rowell"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "A", "name": "Emily Dodds"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "B", "name": "Lauren King"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "C", "name": "Reuben Carver"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "D", "name": "Ben Bramwell Walsh"}];
+
+var teams=[],signedOut=[],signedIn={},participants={three:[],junior:[],senior:[]};
+var expandedRows=new Set(),nextId=1,selBib='',siTab='SR';
+var gistId='',gistToken='',syncBusy=false,lastHash='',pullTimer=null;
+
+// Clock
+setInterval(function(){
+  var el=document.getElementById('live-clock');
+  if(el) el.textContent=new Date().toLocaleTimeString('en-GB');
+},1000);
+
+function fmtTime(ts){ return ts?new Date(ts).toLocaleTimeString('en-GB'):'-'; }
+function fmtMs(ms){
+  if(!ms||ms<0) return '-';
+  var h=Math.floor(ms/3600000),m=Math.floor((ms%3600000)/60000),s=Math.floor((ms%60000)/1000);
+  return (h<10?'0':'')+h+':'+(m<10?'0':'')+m+':'+(s<10?'0':'')+s;
+}
+function tCode(teamId){
+  var t=teams.find(function(x){return x.id===teamId;});
+  if(!t) return '???';
+  var same=teams.filter(function(x){return x.type===t.type;});
+  var i=same.findIndex(function(x){return x.id===teamId;});
+  return t.type+(i+1<10?'0':'')+(i+1);
+}
+function wFullId(walk,bib,teamName){
+  var type=W2T[walk];
+  // If teamName given, find that specific team to get correct code
+  if(teamName){
+    var t2=teams.find(function(x){return x.name===teamName&&x.type===type;});
+    if(t2) return tCode(t2.id)+'-'+bib;
+  }
+  var p=participants[walk]&&participants[walk].find(function(x){return x.bib===bib;});
+  if(!p||!p.team) return type+'??-'+bib;
+  var t=teams.find(function(x){return x.name===p.team&&x.type===type;});
+  if(!t) return type+'??-'+bib;
+  return tCode(t.id)+'-'+bib;
+}
+function siKey(walk,teamId,bib){ return walk+'_'+teamId+'_'+bib; }
+function allWalkers(){
+  var a=[];
+  Object.keys(participants).forEach(function(w){
+    participants[w].forEach(function(p){ a.push(Object.assign({},p,{walk:w})); });
+  });
+  return a;
+}
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── EVENT DELEGATION ──────────────────────────────────────────────────────────
+// Instead of onclick="fn()" we use data-action attributes and a single listener
+document.addEventListener('click',function(e){
+  var el=e.target;
+  // Walk up to find element with data-action
+  while(el&&el!==document.body){
+    var action=el.getAttribute('data-action');
+    if(action){
+      var d=el.dataset;
+      if(action==='tab')      switchTab(d.tab);
+      if(action==='si-tab')   setSiTab(d.type);
+      if(action==='signin')   signInMember(d.walk,parseInt(d.tid),d.bib);
+      if(action==='add-team') addTeam();
+      if(action==='remove-team') removeTeam(parseInt(d.tid));
+      if(action==='add-member')  addMemberFromPill(parseInt(d.tid),d.bib);
+      if(action==='remove-member') removeMember(parseInt(d.tid),d.bib);
+      if(action==='sel-bib')  selectBib(d.bib);
+      if(action==='signout')  signOutWalker();
+      if(action==='remove-signout') removeSignOut(d.bib,d.walk);
+      if(action==='start')    startP(d.walk,d.bib);
+      if(action==='finish')   finishP(d.walk,d.bib);
+      if(action==='dnf')      markDNF(d.walk,d.bib);
+      if(action==='remove-p') removeP(d.walk,d.bib);
+      if(action==='expand')   toggleExpand(d.walk,d.bib);
+      if(action==='split')    logSplit(d.walk,d.bib,d.cp);
+      if(action==='add-walker') addManualP(d.walk);
+      if(action==='export-teams')   exportTeams();
+      if(action==='export-signout') exportSignOut();
+      if(action==='export-walk')    exportWalk(d.walk);
+      if(action==='push')     forcePush();
+      if(action==='pull')     forcePull();
+      if(action==='wdb-filter')      wdbSetFilter(d.filter);
+      if(action==='wdb-toggle')      wdbToggle(parseInt(d.wid));
+      if(action==='wdb-create-team') wdbCreateTeam();
+      if(action==='wdb-clear-sel')   { wdbSelected.clear(); renderWalkerDB(); }
+      if(action==='reg-mode')        setRegMode(d.mode);
+      if(action==='reg-individual')  registerIndividual();
+      if(action==='reg-one')         registerOne(parseInt(d.tid),d.bib);
+      if(action==='walk-view')       setWalkView(d.walk,d.mode);
+      if(action==='start-team')      startTeam(d.walk,parseInt(d.tid));
+      if(action==='finish-team')     finishTeam(d.walk,parseInt(d.tid));
+      if(action==='log-team-cp')     logTeamCP(d.walk,parseInt(d.tid),d.cp,d.inout);
+      if(action==='clear-team-cp')   clearTeamCP(parseInt(d.tid),d.cp,d.inout);
+      if(action==='cp-tab')          setCpTab(d.cpslug);
+      if(action==='cp-walk')          setCpWalk(d.walk);
+      if(action==='teams-filter')    setTeamsFilter(d.filter);
+      if(action==='picker-toggle')   togglePickerWalker(parseInt(d.wid));
+      if(action==='withdraw')        withdrawMember(d.walk,parseInt(d.tid),d.bib);
+      if(action==='edit-phone')      editPhone(parseInt(d.sodx));
+      if(action==='log-left')        logLeft(parseInt(d.sodx));
+      if(action==='clear-left')      clearLeft(parseInt(d.sodx));
+      if(action==='toggle-retired')  toggleRetired(d.walk,d.bib,d.team);
+      return;
+    }
+    el=el.parentElement;
+  }
+});
+
+// Wire up non-delegated buttons
+document.addEventListener('DOMContentLoaded',function(){
+  document.getElementById('btn-add-team').setAttribute('data-action','add-team');
+  document.getElementById('btn-signout').setAttribute('data-action','signout');
+  document.getElementById('btn-export-signout').setAttribute('data-action','export-signout');
+  document.getElementById('btn-push').setAttribute('data-action','push');
+  document.getElementById('btn-pull').setAttribute('data-action','pull');
+  document.querySelectorAll('.tab-btn').forEach(function(b){
+    b.setAttribute('data-action','tab');
+    b.setAttribute('data-tab',b.getAttribute('data-tab'));
+  });
+  document.querySelectorAll('.si-type-tab').forEach(function(b){
+    b.setAttribute('data-action','si-tab');
+  });
+  // Gist inputs
+  document.getElementById('gist-id').addEventListener('input',saveConfig);
+  document.getElementById('gist-token').addEventListener('input',saveConfig);
+  var typeInp=document.getElementById('team-type-input');if(typeInp)typeInp.addEventListener('change',updateWalkerPicker);
+  var pickerSrch=document.getElementById('walker-picker-search');
+  if(pickerSrch) pickerSrch.addEventListener('input',function(){pickerSearch=this.value.toLowerCase();updateWalkerPicker();});
+  var typeInp=document.getElementById('team-type-input');if(typeInp)typeInp.addEventListener('change',updateWalkerPicker);
+  var pickerSrch=document.getElementById('walker-picker-search');
+  if(pickerSrch) pickerSrch.addEventListener('input',function(){pickerSearch=this.value.toLowerCase();updateWalkerPicker();});
+  var soSel=document.getElementById('so-team-select');
+  if(soSel) soSel.addEventListener('change',updateSoTeamPreview);
+  var soIndTeam=document.getElementById('so-ind-team');
+  if(soIndTeam) soIndTeam.addEventListener('change',function(){ updateSoIndMemberSelect(); updateSoIndPreview(); });
+  var soIndMem=document.getElementById('so-ind-member');
+  if(soIndMem) soIndMem.addEventListener('change',updateSoIndPreview);
+  var typeInput=document.getElementById('team-type-input');
+  if(typeInput) typeInput.addEventListener('change',updateWalkerPicker);
+  var wdbSrch=document.getElementById('wdb-search');
+  if(wdbSrch) wdbSrch.addEventListener('input',renderWalkerDB);
+  var soSel=document.getElementById('so-team-select');
+  if(soSel) soSel.addEventListener('change',updateSoTeamPreview);
+  var soIndTeam=document.getElementById('so-ind-team');
+  if(soIndTeam) soIndTeam.addEventListener('change',function(){ updateSoIndMemberSelect(); updateSoIndPreview(); });
+  var soIndMem=document.getElementById('so-ind-member');
+  if(soIndMem) soIndMem.addEventListener('change',updateSoIndPreview);
+});
+
+// ── TAB SWITCHING ─────────────────────────────────────────────────────────────
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
+  document.querySelectorAll('.panel').forEach(function(p){p.classList.remove('active');});
+  var btn=document.querySelector('[data-tab="'+tab+'"]');
+  if(btn) btn.classList.add('active');
+  var panel=document.getElementById('panel-'+tab);
+  if(panel) panel.classList.add('active');
+}
+function setSiTab(type){ siTab=type; renderSignIn(); }
+
+// ── TEAMS ─────────────────────────────────────────────────────────────────────
+function addTeam(){
+  var name=document.getElementById('team-name-input').value.trim();
+  var type=document.getElementById('team-type-input').value;
+  if(!name){alert('Enter a team name.');return;}
+  if(teams.find(function(t){return t.name.toLowerCase()===name.toLowerCase()&&t.type===type;})){alert('Team already exists.');return;}
+  var newTeam={id:nextId++,name:name,type:type,members:[]};
+  teams.push(newTeam);
+  var walk=T2W[type];
+  var now=Date.now();
+
+  if(pickerSelected.size>0){
+    var selWalkers=WALKER_REGISTRY.filter(function(w){return pickerSelected.has(w.id);});
+    selWalkers.slice(0,7).forEach(function(w,i){
+      var bib=BIBS[i];
+      newTeam.members.push({bib:bib,name:w.name});
+
+      // Find this walker's existing participant record to carry over start time
+      var existingP=null;
+      participants[walk].forEach(function(p){
+        if(p.name===w.name && p.startTime && (!existingP || p.startTime < existingP.startTime))
+          existingP=p;
+      });
+
+      // Create participant — inherit start time from original team if they've started
+      var startTime=existingP?existingP.startTime:null;
+      var status=startTime?'on-course':'waiting';
+
+      if(!participants[walk].find(function(p){return p.bib===bib&&p.team===name;})){
+        participants[walk].push({
+          bib:bib,name:w.name,team:name,teamId:newTeam.id,
+          startTime:startTime,finishTime:null,splits:{},
+          status:status,dnf:false
+        });
+      }
+
+      // Auto sign-in — carry time from original sign-in or use now
+      var key=siKey(walk,newTeam.id,bib);
+      if(!signedIn[key]){
+        // Try to find original sign-in time
+        var origSignIn=null;
+        Object.keys(signedIn).forEach(function(k){
+          var s=signedIn[k];
+          if(s.name===w.name && s.walk===walk) origSignIn=s;
+        });
+        signedIn[key]={
+          time:origSignIn?origSignIn.time:now,
+          name:w.name,walk:walk,bib:bib,
+          teamId:newTeam.id,fullId:tCode(newTeam.id)+'-'+bib
+        };
+      }
+    });
+    pickerSelected.clear();
+  }
+  document.getElementById('team-name-input').value='';
+  renderAll();
+  updateWalkerPicker();
+}
+function removeTeam(id){
+  if(!confirm('Remove this team?'))return;
+  teams=teams.filter(function(t){return t.id!==id;});
+  renderAll();
+}
+function addMemberFromPill(tid,bib){
+  var nameEl=document.getElementById('mname-'+tid);
+  if(!nameEl){return;}
+  var name=nameEl.value.trim();
+  if(!name){alert('Enter member name first, then click a bib letter.');nameEl.focus();return;}
+  var team=teams.find(function(t){return t.id===tid;});
+  if(!team)return;
+  if(team.members.find(function(m){return m.bib===bib;})){alert('Bib '+bib+' already in this team.');return;}
+  team.members.push({bib:bib,name:name});
+  var walk=T2W[team.type];
+  if(!participants[walk].find(function(p){return p.bib===bib&&p.team===team.name;}))
+    participants[walk].push({bib:bib,name:name,team:team.name,teamId:team.id,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+  nameEl.value='';
+  renderAll();
+}
+function removeMember(tid,bib){
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t)return;
+  t.members=t.members.filter(function(m){return m.bib!==bib;});
+  renderAll();
+}
+function getMemberBadge(type,teamId,bib){
+  var walk=T2W[type];
+  var key=siKey(walk,teamId,bib);
+  if(signedIn[key]) return '<span class="status-badge badge-present">Present</span>';
+  var t=teams.find(function(x){return x.id===teamId;});
+  var p=t&&participants[walk]&&participants[walk].find(function(x){return x.bib===bib&&x.team===t.name;});
+  if(p&&p.status==='finished') return '<span class="status-badge badge-finished">Fin</span>';
+  if(p&&p.status==='on-course') return '<span class="status-badge badge-on-course">Out</span>';
+  if(p&&p.status==='dnf') return '<span class="status-badge badge-dnf">DNF</span>';
+  return '<span class="status-badge badge-waiting">Wait</span>';
+}
+
+var pickerSelected = new Set(); // walker ids selected for new team
+
+var pickerSearch = '';
+
+function updateWalkerPicker(){
+  var typeEl=document.getElementById('team-type-input');
+  var pool=document.getElementById('walker-picker-pool');
+  var selDiv=document.getElementById('walker-picker-selected');
+  if(!typeEl||!pool||!selDiv)return;
+  var type=typeEl.value;
+
+  // Show ALL walkers of this type — including those already in teams
+  // since walkers can reform into new teams at checkpoints
+  var all=WALKER_REGISTRY.filter(function(w){
+    if(w.type!==type)return false;
+    if(pickerSearch && w.name.toLowerCase().indexOf(pickerSearch)<0 && w.originalTeam.toLowerCase().indexOf(pickerSearch)<0) return false;
+    return true;
+  });
+
+  // Find current team for each walker
+  function getCurrentTeam(w){
+    var t=teams.find(function(t){
+      return t.type===type&&t.members.find(function(m){return m.name===w.name;});
+    });
+    return t?tCode(t.id):'';
+  }
+
+  // Group: unassigned first, then by team
+  var unassigned=all.filter(function(w){return !getCurrentTeam(w);});
+  var assigned=all.filter(function(w){return !!getCurrentTeam(w);});
+
+  var html='';
+  if(!all.length){
+    html='<div style="color:var(--text-muted);font-size:.78rem;padding:8px;">No '+type+' walkers found.</div>';
+  } else {
+    if(unassigned.length){
+      html+='<div style="font-family:DM Mono,monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:4px 8px 2px;">Unassigned</div>';
+      html+=unassigned.map(function(w){return walkerPickerRow(w,'');}).join('');
+    }
+    if(assigned.length){
+      html+='<div style="font-family:DM Mono,monospace;font-size:.58rem;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);padding:6px 8px 2px;border-top:1px solid var(--border);margin-top:4px;">Already in a team — can still be added to new team</div>';
+      html+=assigned.map(function(w){return walkerPickerRow(w,getCurrentTeam(w));}).join('');
+    }
+  }
+  pool.innerHTML=html;
+
+  // Show selected pills
+  var selWalkers=WALKER_REGISTRY.filter(function(w){return pickerSelected.has(w.id);});
+  selDiv.innerHTML=selWalkers.length
+    ? '<div style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;width:100%;margin-bottom:4px;">Selected ('+selWalkers.length+'/7):</div>'+
+      selWalkers.map(function(w){
+        var ct=getCurrentTeam(w);
+        return '<span style="display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:16px;background:rgba(90,186,106,.1);border:1px solid var(--green-dim);font-size:.78rem;">'+
+          esc(w.name)+(ct?'<span style="font-family:DM Mono,monospace;font-size:.62rem;color:var(--text-muted);margin-left:2px;">('+ct+')</span>':'')+
+          '<button style="border:none;background:transparent;color:var(--red);cursor:pointer;font-size:.8rem;padding:0;" data-action="picker-toggle" data-wid="'+w.id+'">&#10005;</button>'+
+          '</span>';
+      }).join('')
+    : '';
+}
+
+function walkerPickerRow(w, currentTeam){
+  var sel=pickerSelected.has(w.id);
+  return '<div style="display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:6px;cursor:pointer;background:'+(sel?'rgba(90,186,106,.1)':'transparent')+';border:1px solid '+(sel?'var(--green-dim)':'transparent')+';margin-bottom:1px;" data-action="picker-toggle" data-wid="'+w.id+'">'+
+    '<span style="width:18px;height:18px;border-radius:4px;border:2px solid '+(sel?'var(--green)':'var(--border)')+';background:'+(sel?'var(--green)':'transparent')+';display:inline-flex;align-items:center;justify-content:center;font-size:.7rem;color:#0e1410;flex-shrink:0;">'+(sel?'&#10003;':'')+'</span>'+
+    '<span style="font-size:.85rem;font-weight:500;flex:1;color:var(--text);">'+esc(w.name)+'</span>'+
+    (currentTeam?'<span style="font-family:DM Mono,monospace;font-size:.65rem;padding:2px 7px;border-radius:4px;background:var(--surface);border:1px solid var(--border);color:var(--text-dim);">'+esc(currentTeam)+'</span>':'')+
+    '<span style="font-size:.7rem;color:var(--text-muted);max-width:140px;text-overflow:ellipsis;overflow:hidden;white-space:nowrap;">'+esc(w.originalTeam)+'</span>'+
+    '</div>';
+}
+
+function togglePickerWalker(wid){
+  if(pickerSelected.has(wid)){
+    pickerSelected.delete(wid);
+  } else {
+    if(pickerSelected.size>=7){alert('Maximum 7 members per team.');return;}
+    pickerSelected.add(wid);
+  }
+  updateWalkerPicker();
+}
+
+var teamsFilter='ALL';
+
+function setTeamsFilter(f){
+  teamsFilter=f;
+  renderTeams();
+}
+
+function renderTeams(){
+  document.getElementById('badge-teams').textContent=teams.length;
+  updateDatalist();
+
+  // Render filter tabs
+  var filterBar=document.getElementById('teams-filter-bar');
+  if(filterBar){
+    var counts={ALL:teams.length,SR:0,JR:0,TD:0};
+    teams.forEach(function(t){counts[t.type]=(counts[t.type]||0)+1;});
+    filterBar.innerHTML=['ALL','SR','JR','TD'].map(function(f){
+      var isActive=teamsFilter===f;
+      var col=f==='SR'?'var(--senior)':f==='JR'?'var(--junior)':f==='TD'?'var(--three)':'var(--green)';
+      var bg=f==='SR'?'rgba(232,168,74,.12)':f==='JR'?'rgba(184,127,212,.12)':f==='TD'?'rgba(74,184,186,.12)':'rgba(90,186,106,.1)';
+      return '<button style="padding:5px 12px;border-radius:20px;border:1px solid '+(isActive?col:'var(--border)')+';background:'+(isActive?bg:'transparent')+';color:'+(isActive?col:'var(--text-dim)')+';font-family:DM Mono,monospace;font-size:.75rem;font-weight:700;cursor:pointer;" data-action="teams-filter" data-filter="'+f+'">'+f+(counts[f]?' ('+counts[f]+')':'')+'</button>';
+    }).join('');
+  }
+
+  var grid=document.getElementById('teams-grid');
+  var filtered=teamsFilter==='ALL'?teams:teams.filter(function(t){return t.type===teamsFilter;});
+  if(!filtered.length){grid.innerHTML='<div class="teams-empty-state">No '+(teamsFilter==='ALL'?'':teamsFilter+' ')+'teams yet.</div>';return;}
+  var parts=[];
+  for(var i=0;i<filtered.length;i++){
+    var t=filtered[i];
+    var walk=T2W[t.type];
+    var tc=tCode(t.id);
+    var used=t.members.map(function(m){return m.bib;});
+    var rows=[];
+    for(var j=0;j<t.members.length;j++){
+      var m=t.members[j];
+      rows.push(
+        '<div class="member-row">'+
+        '<span class="mbib '+t.type+'">'+esc(tc+'-'+m.bib)+'</span>'+
+        '<span class="mname">'+esc(m.name)+'</span>'+
+        getMemberBadge(t.type,t.id,m.bib)+
+        '<button class="btn btn-xs btn-red" data-action="remove-member" data-tid="'+t.id+'" data-bib="'+m.bib+'">x</button>'+
+        '</div>'
+      );
+    }
+    var pills=BIBS.map(function(b){
+      return '<div class="bib-pill'+(used.indexOf(b)>=0?' used':'')+'" data-action="add-member" data-tid="'+t.id+'" data-bib="'+b+'">'+b+'</div>';
+    }).join('');
+    parts.push(
+      '<div class="team-card">'+
+      '<div class="team-card-header">'+
+      '<span class="type-badge type-'+t.type+'">'+esc(tc)+'</span>'+
+      '<span class="team-name-text">'+esc(t.name)+'</span>'+
+      '<button class="btn btn-xs btn-red" data-action="remove-team" data-tid="'+t.id+'">x</button>'+
+      '</div>'+
+      '<div class="team-card-body">'+(rows.length?rows.join(''):'<div class="team-empty">No members - add below</div>')+'</div>'+
+      '<div class="team-card-footer">'+
+      '<p style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Enter name then pick bib:</p>'+
+      '<div class="bib-picker" style="margin-bottom:8px;">'+pills+'</div>'+
+      '<div class="team-add-row"><input class="inp-sm" id="mname-'+t.id+'" placeholder="Member name" style="flex:1"></div>'+
+      '<div style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);margin-top:8px;">'+t.members.length+' members - '+WALKS[walk].label+'</div>'+
+      '</div></div>'
+    );
+  }
+  grid.innerHTML=parts.join('');
+}
+
+
+function signInMember(walk,teamId,bib){
+  var t=teams.find(function(x){return x.id===teamId;});
+  var m=t&&t.members.find(function(x){return x.bib===bib;});
+  if(!m){return;}
+  var tc=tCode(teamId);
+  var fullId=tc+'-'+bib;
+  var key=siKey(walk,teamId,bib);
+  if(signedIn[key]){
+    if(confirm(m.name+' ('+fullId+') already signed in at '+fmtTime(signedIn[key].time)+'. Undo?')){
+      delete signedIn[key]; renderAll();
+    }
+    return;
+  }
+  signedIn[key]={time:Date.now(),name:m.name,walk:walk,bib:bib,teamId:teamId,fullId:fullId};
+  renderAll();
+  setTimeout(function(){var el=document.getElementById('si-item-'+key);if(el)el.classList.add('just-signed');},30);
+}
+function renderSignIn(){
+  var all=allWalkers();
+  var siKeys=Object.keys(signedIn);
+  document.getElementById('badge-signin').textContent=siKeys.length;
+  document.getElementById('si-count').textContent=siKeys.length;
+  document.getElementById('si-pending').textContent=Math.max(0,all.length-siKeys.length);
+  document.getElementById('si-total').textContent=all.length;
+  ['SR','JR','TD'].forEach(function(type){
+    var walk=T2W[type];
+    var tf=teams.filter(function(t){return t.type===type;});
+    var inC=tf.reduce(function(a,t){return a+t.members.filter(function(m){return !!signedIn[siKey(walk,t.id,m.bib)];}).length;},0);
+    var tot=participants[walk].length;
+    var tab=document.getElementById('si-tab-'+type);
+    var tc=document.getElementById('si-tc-'+type);
+    if(tc) tc.textContent=inC+'/'+tot;
+    if(tab) tab.className='si-type-tab'+(siTab===type?' active-'+type:'');
+  });
+  var tf=teams.filter(function(t){return t.type===siTab;});
+  var listEl=document.getElementById('si-team-list');
+  if(!tf.length){listEl.innerHTML='<div class="bib-empty">No '+siTab+' teams registered yet.</div>';return;}
+  var parts=[];
+  for(var i=0;i<tf.length;i++){
+    var t=tf[i];
+    var tc=tCode(t.id);
+    var walk=T2W[t.type];
+    var inC=t.members.filter(function(m){return !!signedIn[siKey(walk,t.id,m.bib)];}).length;
+    var tot=t.members.length;
+    var allIn=tot>0&&inC===tot;
+    var btns=t.members.map(function(m){
+      var key=siKey(walk,t.id,m.bib);
+      var isIn=!!signedIn[key];
+      var fullId=tc+'-'+m.bib;
+      var siTime=isIn?fmtTime(signedIn[key].time):'';
+      var isWithdrawn=isIn&&signedIn[key].withdrawn;
+      var rowBtnClass='si-member-btn '+t.type+(isIn&&!isWithdrawn?' in':'');
+      var rowStyle=isWithdrawn?'flex:1;border:none;border-bottom:none;opacity:.45;':'flex:1;border:none;border-bottom:none;';
+      return '<div style="display:flex;align-items:center;">'+
+        '<button class="'+rowBtnClass+'" style="'+rowStyle+'" data-action="signin" data-walk="'+walk+'" data-tid="'+t.id+'" data-bib="'+m.bib+'">'+
+        '<span class="si-member-bid">'+esc(fullId)+'</span>'+
+        '<span class="si-member-name"'+(isWithdrawn?' style="text-decoration:line-through;"':'')+'>'+esc(m.name)+'</span>'+
+        (isWithdrawn?'<span style="font-family:DM Mono,monospace;font-size:.65rem;color:var(--red);">WITHDRAWN</span>':'')+
+        (isIn&&!isWithdrawn?'<span class="si-member-time">'+esc(siTime)+'</span>':'')+
+        '<span class="si-member-check">'+(isIn&&!isWithdrawn?'&#10003;':(isWithdrawn?'&#10005;':''))+'</span>'+
+        '</button>'+
+        '<button style="padding:10px 10px;border:none;background:transparent;color:'+(isWithdrawn?'var(--amber)':'var(--red-dim)')+';font-size:.68rem;cursor:pointer;white-space:nowrap;flex-shrink:0;" data-action="withdraw" data-walk="'+walk+'" data-tid="'+t.id+'" data-bib="'+m.bib+'" title="'+(isWithdrawn?'Re-activate':'Withdraw')+'">'+(isWithdrawn?'&#8635;':'&#10005;')+'</button>'+
+        '</div>';
+    }).join('');
+    parts.push(
+      '<div class="si-team-group">'+
+      '<div class="si-team-hdr">'+
+      '<span class="si-team-hdr-code '+t.type+'">'+esc(tc)+'</span>'+
+      '<span class="si-team-hdr-name">'+esc(t.name)+'</span>'+
+      '<span class="si-team-hdr-prog'+(allIn?' all-in':'')+'">'+( allIn?'All in':inC+'/'+tot)+'</span>'+
+      '</div>'+
+      '<div class="si-members">'+btns+'</div>'+
+      '</div>'
+    );
+  }
+  listEl.innerHTML=parts.join('');
+  // Signed-in list
+  var siList=document.getElementById('signed-in-list');
+  if(!siKeys.length){siList.innerHTML='<div style="color:var(--text-muted);font-size:.78rem;padding:10px 0;text-align:center;">No one signed in yet.</div>';}
+  else{
+    var sorted=siKeys.slice().sort(function(a,b){return signedIn[b].time-signedIn[a].time;});
+    siList.innerHTML=sorted.map(function(key){
+      var s=signedIn[key];
+      var type=s.walk?W2T[s.walk]:'';
+      var fid=s.fullId||wFullId(s.walk,s.bib,s.team);
+      return '<div class="si-item" id="si-item-'+key+'">'+
+        '<span class="si-bib '+type+'">'+esc(fid)+'</span>'+
+        '<div style="flex:1"><div class="si-name">'+esc(s.name)+'</div><div class="si-walk-lbl">'+(s.walk?WALKS[s.walk].label:'')+'</div></div>'+
+        '<span class="si-time-lbl">'+fmtTime(s.time)+'</span>'+
+        '</div>';
+    }).join('');
+  }
+  // Still to arrive
+  var pending=all.filter(function(p){
+    var t=teams.find(function(t){return t.name===p.team&&t.type===W2T[p.walk];});
+    if(!t)return true;
+    return !signedIn[siKey(p.walk,t.id,p.bib)];
+  });
+  var nsi=document.getElementById('nsi-list');
+  if(!pending.length){nsi.innerHTML='<div style="color:var(--green);font-size:.78rem;padding:8px 0;text-align:center;">Everyone signed in!</div>';}
+  else{
+    nsi.innerHTML=pending.map(function(p){
+      var type=W2T[p.walk];
+      var fid=wFullId(p.walk,p.bib,p.team);
+      return '<div class="nsi-item">'+
+        '<span class="nsi-bib '+type+'">'+esc(fid)+'</span>'+
+        '<span class="nsi-name">'+esc(p.name)+(p.team?'<span style="color:var(--text-muted);font-size:.68rem;margin-left:6px">'+esc(p.team)+'</span>':'')+'</span>'+
+        '</div>';
+    }).join('');
+  }
+}
+
+// ── SIGN OUT ──────────────────────────────────────────────────────────────────
+function selectBib(b){ selBib=b; renderSoBibPicker(); }
+function renderSoBibPicker(){
+  var picker=document.getElementById('so-bib-picker');
+  if(!picker)return;
+  picker.innerHTML=BIBS.map(function(b){
+    return '<div class="bib-pill'+(selBib===b?' selected':'')+'" data-action="sel-bib" data-bib="'+b+'">'+b+'</div>';
+  }).join('');
+}
+
+function setRegMode(mode){
+  var teamDiv=document.getElementById('reg-team-mode');
+  var indDiv=document.getElementById('reg-individual-mode');
+  var teamBtn=document.getElementById('reg-mode-team');
+  var indBtn=document.getElementById('reg-mode-individual');
+  if(!teamDiv||!indDiv)return;
+  if(mode==='team'){
+    teamDiv.style.display='block';
+    indDiv.style.display='none';
+    if(teamBtn){teamBtn.style.background='var(--green)';teamBtn.style.color='#0e1410';teamBtn.style.border='none';}
+    if(indBtn){indBtn.style.background='var(--surface2)';indBtn.style.color='var(--text-dim)';indBtn.style.border='1px solid var(--border)';}
+  } else {
+    teamDiv.style.display='none';
+    indDiv.style.display='block';
+    if(indBtn){indBtn.style.background='var(--green)';indBtn.style.color='#0e1410';indBtn.style.border='none';}
+    if(teamBtn){teamBtn.style.background='var(--surface2)';teamBtn.style.color='var(--text-dim)';teamBtn.style.border='1px solid var(--border)';}
+    updateSoIndTeamSelect();
+  }
+}
+
+function updateSoIndTeamSelect(){
+  var sel=document.getElementById('so-ind-team');
+  if(!sel)return;
+  var cur=sel.value;
+  var opts='<option value="">-- Select a team --</option>';
+  ['SR','JR','TD'].forEach(function(type){
+    var tf=teams.filter(function(t){return t.type===type;});
+    if(!tf.length)return;
+    opts+='<optgroup label="'+type+' - '+WALKS[T2W[type]].label+'">';
+    tf.forEach(function(t){
+      opts+='<option value="'+t.id+'">'+tCode(t.id)+' - '+t.name+'</option>';
+    });
+    opts+='</optgroup>';
+  });
+  sel.innerHTML=opts;
+  if(cur) sel.value=cur;
+  updateSoIndMemberSelect();
+}
+
+function updateSoIndMemberSelect(){
+  var teamSel=document.getElementById('so-ind-team');
+  var memSel=document.getElementById('so-ind-member');
+  var preview=document.getElementById('so-ind-preview');
+  var previewText=document.getElementById('so-ind-preview-text');
+  if(!teamSel||!memSel)return;
+  var tid=parseInt(teamSel.value);
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t){memSel.innerHTML='<option value="">-- Select member --</option>';if(preview)preview.style.display='none';return;}
+  var walk=T2W[t.type];
+  var tc=tCode(t.id);
+  var opts='<option value="">-- Select member --</option>';
+  t.members.forEach(function(m){
+    var already=signedOut.find(function(s){return s.bib===m.bib&&s.team===t.name;});
+    opts+='<option value="'+m.bib+'" '+(already?'disabled':'')+'>'+tc+'-'+m.bib+' - '+m.name+(already?' (registered)':'')+'</option>';
+  });
+  memSel.innerHTML=opts;
+  if(preview)preview.style.display='none';
+}
+
+function updateSoIndPreview(){
+  var teamSel=document.getElementById('so-ind-team');
+  var memSel=document.getElementById('so-ind-member');
+  var preview=document.getElementById('so-ind-preview');
+  var previewText=document.getElementById('so-ind-preview-text');
+  if(!teamSel||!memSel||!preview||!previewText)return;
+  var tid=parseInt(teamSel.value);
+  var bib=memSel.value;
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t||!bib){preview.style.display='none';return;}
+  var tc=tCode(t.id);
+  var m=t.members.find(function(x){return x.bib===bib;});
+  if(!m){preview.style.display='none';return;}
+  var walk=T2W[t.type];
+  previewText.innerHTML='<span style="font-family:DM Mono,monospace;font-weight:700;color:var(--'+WALKS[walk].color+')">'+esc(tc+'-'+bib)+'</span> '+esc(m.name)+' &mdash; '+WALKS[walk].label;
+  preview.style.display='block';
+}
+
+function registerIndividual(){
+  var teamSel=document.getElementById('so-ind-team');
+  var memSel=document.getElementById('so-ind-member');
+  var phone=document.getElementById('so-ind-phone').value.trim();
+  if(!teamSel||!teamSel.value){alert('Select a team.');return;}
+  if(!memSel||!memSel.value){alert('Select a member.');return;}
+  var tid=parseInt(teamSel.value);
+  var bib=memSel.value;
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t){return;}
+  var m=t.members.find(function(x){return x.bib===bib;});
+  if(!m){return;}
+  var walk=T2W[t.type];
+  if(signedOut.find(function(s){return s.bib===bib&&s.team===t.name;})){
+    alert(m.name+' is already registered.');return;
+  }
+  signedOut.push({bib:bib,name:m.name,walk:walk,team:t.name,phone:phone,signOutTime:Date.now()});
+  if(!participants[walk].find(function(p){return p.bib===bib&&p.team===t.name;}))
+    participants[walk].push({bib:bib,name:m.name,team:t.name,teamId:t.id,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+  // Reset member select, keep team selected for quick next entry
+  memSel.value='';
+  document.getElementById('so-ind-preview').style.display='none';
+  renderAll();
+}
+
+function updateSoTeamSelect(){
+  var sel=document.getElementById('so-team-select');
+  if(!sel)return;
+  var current=sel.value;
+  var opts='<option value="">-- Select a team to register --</option>';
+  // Group by type
+  ['SR','JR','TD'].forEach(function(type){
+    var tf=teams.filter(function(t){return t.type===type;});
+    if(!tf.length)return;
+    opts+='<optgroup label="'+type+' - '+WALKS[T2W[type]].label+'">';
+    tf.forEach(function(t){
+      var tc=tCode(t.id);
+      var alreadyReg=t.members.filter(function(m){
+        return signedOut.find(function(s){return s.bib===m.bib&&s.team===t.name;});
+      }).length;
+      var label=tc+' - '+t.name+' ('+t.members.length+' members'+(alreadyReg?' | '+alreadyReg+' registered':'')+')';
+      opts+='<option value="'+t.id+'">'+label+'</option>';
+    });
+    opts+='</optgroup>';
+  });
+  sel.innerHTML=opts;
+  if(current) sel.value=current;
+}
+
+function updateSoTeamPreview(){
+  var sel=document.getElementById('so-team-select');
+  var preview=document.getElementById('so-team-preview');
+  var list=document.getElementById('so-team-preview-list');
+  if(!sel||!preview||!list)return;
+  var tid=parseInt(sel.value);
+  if(!tid){preview.style.display='none';return;}
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t||!t.members.length){preview.style.display='none';return;}
+  var walk=T2W[t.type];
+  var tc=tCode(t.id);
+  var rows=t.members.map(function(m){
+    var already=signedOut.find(function(s){return s.bib===m.bib&&s.team===t.name;});
+    var fullId=tc+'-'+m.bib;
+    return '<div style="display:flex;align-items:center;gap:12px;padding:8px 4px;border-bottom:1px solid rgba(42,62,44,.3);">'+
+      '<span style="font-family:DM Mono,monospace;font-size:.9rem;font-weight:700;min-width:82px;color:var(--'+WALKS[walk].color+')">'+esc(fullId)+'</span>'+
+      '<span style="flex:1;font-size:.9rem;font-weight:700;color:#fff;">'+esc(m.name)+'</span>'+
+      (already
+        ? '<span style="font-family:DM Mono,monospace;font-size:.65rem;color:var(--green);white-space:nowrap;">&#10003; Registered</span>'
+        : '<button style="padding:5px 14px;border-radius:7px;border:none;background:var(--green);color:#0e1410;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap;" data-action="reg-one" data-tid="'+t.id+'" data-bib="'+m.bib+'">+ Register</button>')+
+      '</div>';
+  }).join('');
+  list.innerHTML=rows;
+  preview.style.display='block';
+}
+
+function registerOne(tid, bib){
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t)return;
+  var m=t.members.find(function(x){return x.bib===bib;});
+  if(!m)return;
+  var walk=T2W[t.type];
+  if(signedOut.find(function(s){return s.bib===bib&&s.team===t.name;})){
+    updateSoTeamPreview(); return;
+  }
+  var phone=document.getElementById('so-phone').value.trim();
+  var roNow=Date.now();
+  signedOut.push({bib:bib,name:m.name,walk:walk,team:t.name,phone:phone,signOutTime:roNow});
+  if(!participants[walk].find(function(p){return p.bib===bib&&p.team===t.name;}))
+    participants[walk].push({bib:bib,name:m.name,team:t.name,teamId:t.id,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+  var roKey=siKey(walk,t.id,bib);
+  if(!signedIn[roKey])
+    signedIn[roKey]={time:roNow,name:m.name,walk:walk,bib:bib,teamId:t.id,fullId:tCode(t.id)+'-'+bib};
+  updateSoTeamPreview();
+  renderAll();
+}
+
+function signOutWalker(){
+  var sel=document.getElementById('so-team-select');
+  var phone=document.getElementById('so-phone').value.trim();
+  if(!sel||!sel.value){alert('Select a team to register.');return;}
+  var tid=parseInt(sel.value);
+  var t=teams.find(function(x){return x.id===tid;});
+  if(!t){alert('Team not found.');return;}
+  var walk=T2W[t.type];
+  var registered=0,skipped=0;
+  var now=Date.now();
+  t.members.forEach(function(m){
+    if(signedOut.find(function(s){return s.bib===m.bib&&s.team===t.name;})){skipped++;return;}
+    signedOut.push({bib:m.bib,name:m.name,walk:walk,team:t.name,phone:phone,signOutTime:now});
+    if(!participants[walk].find(function(p){return p.bib===m.bib&&p.team===t.name;}))
+      participants[walk].push({bib:m.bib,name:m.name,team:t.name,teamId:t.id,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+    // Auto sign-in
+    var key=siKey(walk,t.id,m.bib);
+    if(!signedIn[key])
+      signedIn[key]={time:now,name:m.name,walk:walk,bib:m.bib,teamId:t.id,fullId:tCode(t.id)+'-'+m.bib};
+    registered++;
+  });
+  var msg=registered+' walker'+(registered!==1?'s':'')+' registered';
+  if(skipped) msg+=' ('+skipped+' already registered)';
+  alert(msg);
+  document.getElementById('so-phone').value='';
+  sel.value='';
+  document.getElementById('so-team-preview').style.display='none';
+  renderAll();
+}
+
+function editPhone(idx){
+  var s=signedOut[idx];
+  if(!s)return;
+  var current=s.phone||'';
+  var val=prompt('Phone number for '+s.name+':', current);
+  if(val===null)return;
+  s.phone=val.trim();
+  renderAll();
+}
+
+
+function logLeft(idx){
+  var s=signedOut[idx];
+  if(!s)return;
+  s.leftTime=Date.now();
+  renderAll();
+}
+function clearLeft(idx){
+  var s=signedOut[idx];
+  if(!s)return;
+  delete s.leftTime;
+  renderAll();
+}
+
+function removeSignOut(bib,walk){
+  if(!confirm('Remove?'))return;
+  signedOut=signedOut.filter(function(x){return!(x.bib===bib&&x.walk===walk);});
+  renderAll();
+}
+function renderSignOut(){
+  renderSoBibPicker();
+  updateSoTeamSelect();
+  updateSoIndTeamSelect();
+  document.getElementById('badge-signout').textContent=signedOut.length;
+  var tbody=document.getElementById('signout-body');
+  if(!signedOut.length){tbody.innerHTML='<tr><td colspan="10"><div class="empty">No walkers registered yet.</div></td></tr>';return;}
+  var rows=signedOut.map(function(s,si){
+    var p=participants[s.walk]&&participants[s.walk].find(function(x){return x.bib===s.bib&&x.team===s.team;});
+    var sl='Registered',sc='badge-waiting';
+    if(p&&p.status==='finished'){sl='Finished';sc='badge-finished';}
+    else if(p&&p.status==='dnf'){sl='DNF';sc='badge-dnf';}
+    else if(p&&p.status==='on-course'){sl='On Course';sc='badge-on-course';}
+    else{var soT=teams.find(function(t){return t.name===s.team&&t.type===W2T[s.walk];});if(soT&&signedIn[siKey(s.walk,soT.id,s.bib)]){sl='Present';sc='badge-present';}}
+    var tc=W2T[s.walk];
+    var fid=wFullId(s.walk,s.bib,s.team);
+    var tObj=teams.find(function(t){return t.name===s.team&&t.type===tc;});
+    var tcode=tObj?tCode(tObj.id):(s.team||'');
+    var siT=teams.find(function(t){return t.name===s.team&&t.type===W2T[s.walk];});
+    var siK=siT?siKey(s.walk,siT.id,s.bib):null;
+    return '<tr>'+
+      '<td class="bib-cell '+s.walk+'">'+esc(fid)+'</td>'+
+      '<td style="font-weight:500">'+esc(s.name)+'</td>'+
+      '<td><span class="status-badge" style="color:var(--'+s.walk+');border:1px solid var(--'+s.walk+'-dim)">'+WALKS[s.walk].label+'</span></td>'+
+      '<td>'+(tcode?'<span class="type-badge type-'+tc+'">'+esc(tcode)+'</span>':'<span style="color:var(--text-muted)">-</span>')+'</td>'+
+      '<td class="mono">'+(siK&&signedIn[siK]?'<span style="color:var(--green)">'+fmtTime(signedIn[siK].time)+'</span>':'<span style="color:var(--text-muted)">Not in</span>')+'</td>'+
+      '<td class="mono" style="min-width:120px;">'+
+        (s.phone?esc(s.phone):'<span style="color:var(--text-muted)">-</span>')+
+        ' <button style="padding:3px 8px;border-radius:5px;border:1px solid var(--green-dim);background:rgba(90,186,106,.08);color:var(--green);font-size:.65rem;font-weight:600;cursor:pointer;" data-action="edit-phone" data-sodx="'+si+'" title="Edit phone number">&#9998; Edit</button>'+
+        '</td>'+
+      '<td class="mono">'+(s.leftTime?'<span style="color:var(--green)">'+fmtTime(s.leftTime)+'</span> <button style="padding:1px 5px;border-radius:4px;border:1px solid var(--red-dim);background:transparent;color:var(--red);font-size:.55rem;cursor:pointer;" data-action="clear-left" data-sodx="'+si+'">x</button>':'<button style="padding:3px 8px;border-radius:5px;border:none;background:rgba(90,186,106,.1);color:var(--green);font-size:.65rem;font-weight:600;cursor:pointer;" data-action="log-left" data-sodx="'+si+'">Log Left</button>')+'</td>'+
+      '<td class="mono">'+fmtTime(s.signOutTime)+'</td>'+
+      '<td><span class="status-badge '+sc+'">'+sl+'</span></td>'+
+      '<td><button class="btn btn-xs btn-red" data-action="remove-signout" data-bib="'+s.bib+'" data-walk="'+s.walk+'">x</button></td>'+
+      '</tr>';
+  });
+  tbody.innerHTML=rows.join('');
+}
+
+// ── WALK TIMING ───────────────────────────────────────────────────────────────
+function startP(walk,bib){var p=participants[walk].find(function(x){return x.bib===bib;});if(!p||p.startTime)return;p.startTime=Date.now();p.status='on-course';renderAll();}
+function finishP(walk,bib){var p=participants[walk].find(function(x){return x.bib===bib;});if(!p||!p.startTime||p.finishTime)return;p.finishTime=Date.now();p.status='finished';renderAll();}
+function logSplit(walk,bib,cp){var p=participants[walk].find(function(x){return x.bib===bib;});if(!p||!p.startTime)return;p.splits[cp]=Date.now();renderAll();}
+function markDNF(walk,bib){var p=participants[walk].find(function(x){return x.bib===bib;});if(!p||!confirm('Mark '+p.name+' as DNF?'))return;p.dnf=true;p.status='dnf';renderAll();}
+function removeP(walk,bib){if(!confirm('Remove?'))return;participants[walk]=participants[walk].filter(function(x){return x.bib!==bib;});expandedRows.delete(walk+'-'+bib);renderAll();}
+function toggleExpand(walk,bib){var k=walk+'-'+bib;if(expandedRows.has(k))expandedRows.delete(k);else expandedRows.add(k);renderAll();}
+function addManualP(walk){
+  var sel=document.getElementById('add-bib-sel-'+walk);
+  var bib=sel&&sel.value;
+  var nameEl=document.getElementById('add-name-'+walk);
+  var name=nameEl&&nameEl.value.trim();
+  if(!bib){alert('Select a bib letter.');return;}
+  if(!name){alert('Enter walker name.');return;}
+  if(participants[walk].find(function(p){return p.bib===bib;})){alert('Bib '+bib+' already in this walk.');return;}
+  participants[walk].push({bib:bib,name:name,team:'',teamId:null,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+  if(nameEl) nameEl.value=''; if(sel) sel.value='';
+  renderAll();
+}
+function getElapsed(p){return p.startTime?fmtMs((p.finishTime||Date.now())-p.startTime):'-';}
+function getBadge(p,walk){
+  if(p.status==='finished') return '<span class="status-badge badge-finished">Finished</span>';
+  if(p.status==='on-course'&&!p.retired) return '<span class="status-badge badge-on-course">On Course</span>';
+  if(p.retired) return '<span class="status-badge badge-dnf" style="background:rgba(232,168,74,.1);color:var(--amber);border-color:var(--amber-dim);">Retired</span>';
+  if(p.status==='dnf') return '<span class="status-badge badge-dnf">DNF</span>';
+  var pt=teams.find(function(t){return t.name===p.team&&t.type===W2T[walk];});
+  if(pt){
+    var sk=siKey(walk,pt.id,p.bib);
+    if(signedIn[sk]&&!signedIn[sk].withdrawn) return '<span class="status-badge badge-present">Present</span>';
+  }
+  return '<span class="status-badge badge-waiting">Waiting</span>';
+}
+// Track view mode per walk: 'list' or 'team'
+var walkViewMode={three:'team',junior:'team',senior:'team'};
+
+function setWalkView(walk,mode){
+  walkViewMode[walk]=mode;
+  renderWalk(walk);
+}
+
+function renderWalk(walk){
+  var cfg=WALKS[walk];
+  // Only show walkers who have been signed in
+  var ps=participants[walk].filter(function(p){
+    var t=teams.find(function(t){return t.name===p.team&&t.type===W2T[walk];});
+    if(!t) return !!p.startTime; // manual walkers: show if started
+    return !!signedIn[siKey(walk,t.id,p.bib)];
+  });
+  document.getElementById('st-'+walk+'-total').textContent=ps.length;
+  document.getElementById('st-'+walk+'-present').textContent=ps.filter(function(p){var st=teams.find(function(t){return t.name===p.team&&t.type===W2T[walk];});return st&&signedIn[siKey(walk,st.id,p.bib)]&&!signedIn[siKey(walk,st.id,p.bib)].withdrawn&&p.status==='waiting';}).length;
+  document.getElementById('st-'+walk+'-course').textContent=ps.filter(function(p){return p.status==='on-course';}).length;
+  document.getElementById('st-'+walk+'-done').textContent=ps.filter(function(p){return p.status==='finished';}).length;
+  document.getElementById('badge-'+walk).textContent=ps.length;
+  var used=ps.map(function(p){return p.bib;});
+  var opts='<option value="">Bib</option>'+BIBS.filter(function(b){return used.indexOf(b)<0;}).map(function(b){return '<option value="'+b+'">'+b+'</option>';}).join('');
+  var mode=walkViewMode[walk]||'team';
+  var h='<div class="toolbar" style="margin-bottom:10px;">'+
+    '<select class="inp" id="add-bib-sel-'+walk+'" style="max-width:90px;font-family:DM Mono,monospace;font-weight:700;">'+opts+'</select>'+
+    '<input class="inp" id="add-name-'+walk+'" type="text" placeholder="Walker name" style="flex:2">'+
+    '<button class="btn btn-'+walk+'" data-action="add-walker" data-walk="'+walk+'">+ Add Walker</button>'+
+    '<div style="display:flex;gap:4px;margin-left:auto;">'+
+      '<button class="btn btn-sm" style="'+(mode==='team'?'background:var(--green);color:#0e1410;border:none;':'background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);')+'" data-action="walk-view" data-walk="'+walk+'" data-mode="team">By Team</button>'+
+      '<button class="btn btn-sm" style="'+(mode==='list'?'background:var(--green);color:#0e1410;border:none;':'background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);')+'" data-action="walk-view" data-walk="'+walk+'" data-mode="list">List</button>'+
+    '</div>'+
+    '<button class="btn btn-dim btn-sm" data-action="export-walk" data-walk="'+walk+'">Export CSV</button>'+
+  '</div>';
+
+  if(!ps.length){
+    h+='<div class="empty">No walkers yet.</div>';
+  } else if(mode==='team'){
+    h+=renderWalkByTeam(walk,ps,cfg);
+  } else {
+    h+=renderWalkList(walk,ps,cfg);
+  }
+  document.getElementById('walk-'+walk+'-content').innerHTML=h;
+}
+
+
+function startTeam(walk, teamId){
+  var t=teams.find(function(x){return x.id===teamId;});
+  if(!t)return;
+  var walk2=T2W[t.type];
+  var now=Date.now();
+  t.members.forEach(function(m){
+    var p=participants[walk2].find(function(x){return x.bib===m.bib&&x.team===t.name;});
+    if(p&&!p.startTime){p.startTime=now;p.status='on-course';}
+  });
+  renderAll();
+}
+
+function finishTeam(walk, teamId){
+  var t=teams.find(function(x){return x.id===teamId;});
+  if(!t)return;
+  var walk2=T2W[t.type];
+  var now=Date.now();
+  t.members.forEach(function(m){
+    var p=participants[walk2].find(function(x){return x.bib===m.bib&&x.team===t.name;});
+    if(p&&p.startTime&&!p.finishTime&&!p.dnf){p.finishTime=now;p.status='finished';}
+  });
+  renderAll();
+}
+
+
+// Team checkpoint logging — time in/out per team per checkpoint
+// stored as teamCheckpoints[teamId][cp] = {in: timestamp, out: timestamp}
+var teamCheckpoints = {};
+
+
+function toggleRetired(walk, bib, team){
+  var p = participants[walk] && participants[walk].find(function(x){ return x.bib===bib && x.team===team; });
+  if(!p) return;
+  if(p.retired){
+    p.retired = false;
+    p.status = 'on-course';
+    p.dnf = false;
+  } else {
+    p.retired = true;
+    p.status = 'dnf';
+    p.dnf = true;
+  }
+  renderAll();
+}
+
+function logTeamCP(walk, teamId, cp, inOut){
+  if(!teamCheckpoints[teamId]) teamCheckpoints[teamId]={};
+  if(!teamCheckpoints[teamId][cp]) teamCheckpoints[teamId][cp]={};
+  teamCheckpoints[teamId][cp][inOut] = Date.now();
+  // Also log the split on each individual member
+  var t=teams.find(function(x){return x.id===teamId;});
+  if(t && inOut==='in'){
+    var walk2=T2W[t.type];
+    var now=Date.now();
+    t.members.forEach(function(m){
+      var p=participants[walk2].find(function(x){return x.bib===m.bib&&x.team===t.name;});
+      if(p&&p.startTime&&!p.finishTime&&!p.dnf&&!p.splits[cp]){
+        p.splits[cp]=now;
+      }
+    });
+  }
+  renderAll();
+}
+
+function clearTeamCP(teamId, cp, inOut){
+  if(teamCheckpoints[teamId]&&teamCheckpoints[teamId][cp]){
+    delete teamCheckpoints[teamId][cp][inOut];
+    if(!teamCheckpoints[teamId][cp]['in']&&!teamCheckpoints[teamId][cp]['out'])
+      delete teamCheckpoints[teamId][cp];
+  }
+  renderAll();
+}
+
+function renderWalkByTeam(walk,ps,cfg){
+  var tc_type=W2T[walk];
+  var walkTeams=teams.filter(function(t){return t.type===tc_type;});
+  // Sort teams by code
+  walkTeams.sort(function(a,b){return tCode(a.id).localeCompare(tCode(b.id));});
+  // Also collect unteamed walkers
+  var teamedBibs=new Set();
+  walkTeams.forEach(function(t){t.members.forEach(function(m){teamedBibs.add(m.bib+'|'+t.name);});});
+  var unteamed=ps.filter(function(p){return !teamedBibs.has(p.bib+'|'+p.team);});
+
+  var h='';
+  walkTeams.forEach(function(t){
+    var tc=tCode(t.id);
+    var members=t.members;
+    if(!members.length)return;
+    // Get participants for this team
+    var teamPs=members.map(function(m){
+      return ps.find(function(p){return p.bib===m.bib&&p.team===t.name;})||null;
+    }).filter(Boolean);
+    // ps is already filtered to signed-in only, so teamPs only contains signed-in members
+    if(!teamPs.length)return;
+
+    // Team header stats
+    var done=teamPs.filter(function(p){return p.status==='finished';}).length;
+    var onCourse=teamPs.filter(function(p){return p.status==='on-course';}).length;
+    var present=teamPs.filter(function(p){var si=siKey(walk,t.id,p.bib);return !!signedIn[si]&&p.status==='waiting';}).length;
+    var bestTime=null;
+    teamPs.filter(function(p){return p.finishTime&&p.startTime;}).forEach(function(p){
+      var t2=p.finishTime-p.startTime;if(bestTime===null||t2<bestTime)bestTime=t2;
+    });
+
+    h+='<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden;">';
+    // Team header
+    // Determine what bulk buttons to show
+    var allStarted=teamPs.every(function(p){return !!p.startTime;});
+    var anyStarted=teamPs.some(function(p){return !!p.startTime;});
+    var allFinished=teamPs.every(function(p){return !!p.finishTime||p.dnf;});
+    var anyOnCourse=teamPs.some(function(p){return p.status==='on-course';});
+    var canStartAll=!allStarted;
+    var canFinishAll=anyOnCourse&&!allFinished;
+
+    h+='<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);flex-wrap:wrap;">'+
+      '<span class="type-badge type-'+t.type+'">'+esc(tc)+'</span>'+
+      '<span style="font-weight:700;font-size:.92rem;flex:1;">'+esc(t.name)+'</span>'+
+      '<span style="font-family:DM Mono,monospace;font-size:.68rem;color:var(--text-muted);display:flex;gap:10px;align-items:center;">'+
+        (present?'<span style="color:var(--green)">'+present+' present</span>':'')+
+        (onCourse?'<span style="color:var(--amber)">'+onCourse+' on course</span>':'')+
+        (done?'<span style="color:var(--green)">'+done+' finished</span>':'')+
+        (bestTime?'<span style="color:var(--green)">Best: '+fmtMs(bestTime)+'</span>':'')+
+        '<span>'+teamPs.length+' members</span>'+
+      '</span>'+
+      '<div style="display:flex;gap:5px;">'+
+        (canStartAll?'<button class="btn btn-sm btn-green" data-action="start-team" data-walk="'+walk+'" data-tid="'+t.id+'" title="Start all members of this team">&#9654; Start All</button>':'')+
+        (canFinishAll?'<button class="btn btn-sm btn-amber" data-action="finish-team" data-walk="'+walk+'" data-tid="'+t.id+'" title="Finish all on-course members of this team">&#9632; Finish All</button>':'')+
+      '</div>'+
+    '</div>';
+
+    // Member rows
+    h+='<table style="width:100%;border-collapse:collapse;">';
+    h+='<thead><tr style="border-bottom:1px solid var(--border);">'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Walker ID</th>'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Name</th>'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Signed In</th>'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Started</th>'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Status</th>'+
+      '<th style="font-family:DM Mono,monospace;font-size:.55rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;font-weight:400;">Elapsed</th>'+
+      '<th style="text-align:right;padding:6px 10px;"></th>'+
+    '</tr></thead><tbody>';
+
+    teamPs.forEach(function(p){
+      var key=walk+'-'+p.bib,isExp=expandedRows.has(key);
+      var elCls=p.status==='finished'?'elapsed done':'elapsed';
+      var fid=wFullId(walk,p.bib,p.team);
+      var siKeyW=siKey(walk,t.id,p.bib);
+      h+='<tr style="border-bottom:1px solid rgba(42,62,44,.3);">'+
+        '<td style="padding:8px 10px;font-family:DM Mono,monospace;font-weight:700;font-size:.88rem;" class="bib-cell '+walk+'">'+esc(fid)+'</td>'+
+        '<td style="padding:8px 10px;font-weight:500;color:var(--text);">'+esc(p.name)+'</td>'+
+        '<td style="padding:8px 10px;font-family:DM Mono,monospace;font-size:.76rem;color:var(--text-dim);">'+(signedIn[siKeyW]?'<span style="color:var(--green)">'+fmtTime(signedIn[siKeyW].time)+'</span>':'<span style="color:var(--text-muted)">-</span>')+'</td>'+
+        '<td style="padding:8px 10px;font-family:DM Mono,monospace;font-size:.76rem;color:var(--text-dim);">'+fmtTime(p.startTime)+'</td>'+
+        '<td style="padding:8px 10px;">'+getBadge(p,walk)+'</td>'+
+        '<td class="'+elCls+'" id="elp-'+walk+'-'+p.bib+'" style="padding:8px 10px;">'+(p.status!=='waiting'?getElapsed(p):'-')+'</td>'+
+        '<td style="padding:8px 10px;text-align:right;"><div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap;">'+
+          (!p.startTime?'<button class="btn btn-sm btn-green" data-action="start" data-walk="'+walk+'" data-bib="'+p.bib+'">Start</button>':'')+
+          (p.startTime&&!p.finishTime&&!p.dnf?'<button class="btn btn-sm btn-amber" data-action="finish" data-walk="'+walk+'" data-bib="'+p.bib+'">Finish</button>':'')+
+          (p.startTime&&!p.finishTime&&!p.dnf?'<button class="btn btn-xs btn-dim" style="font-size:.65rem;" data-action="expand" data-walk="'+walk+'" data-bib="'+p.bib+'">'+(isExp?'&#9650;':'Splits')+'</button>':'')+
+          (!p.dnf&&!p.finishTime?'<button class="btn btn-sm" style="background:transparent;border:1px solid var(--red-dim);color:var(--red);" data-action="dnf" data-walk="'+walk+'" data-bib="'+p.bib+'">DNF</button>':'')+
+          (p.startTime&&!p.finishTime?'<button class="btn btn-xs" style="background:transparent;border:1px solid '+(p.retired?'var(--amber-dim)':'var(--red-dim)')+';color:'+(p.retired?'var(--amber)':'var(--red)')+';font-size:.65rem;" data-action="toggle-retired" data-walk="'+walk+'" data-bib="'+p.bib+'" data-team="'+p.team+'">'+(p.retired?'&#8635; Un-retire':'Retired')+'</button>':'')+
+        '</div></td>'+
+      '</tr>';
+      if(isExp){
+        h+='<tr style="background:var(--surface);"><td colspan="7"><div style="padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">';
+        if(p.startTime)h+='<div class="split-item split-start"><div class="split-cp">Start</div><div class="split-clock">'+fmtTime(p.startTime)+'</div><div class="split-elapsed">00:00:00</div></div>';
+        cfg.checkpoints.forEach(function(cp){
+          if(p.splits[cp])h+='<div class="split-item"><div class="split-cp">'+esc(cp)+'</div><div class="split-clock">'+fmtTime(p.splits[cp])+'</div><div class="split-elapsed">+'+fmtMs(p.splits[cp]-p.startTime)+'</div></div>';
+          else if(p.startTime&&!p.finishTime&&!p.dnf)h+='<button class="btn btn-sm btn-three" data-action="split" data-walk="'+walk+'" data-bib="'+p.bib+'" data-cp="'+cp+'">Log '+esc(cp)+'</button>';
+        });
+        if(p.finishTime)h+='<div class="split-item split-finish"><div class="split-cp">Finish</div><div class="split-clock">'+fmtTime(p.finishTime)+'</div><div class="split-elapsed">+'+fmtMs(p.finishTime-p.startTime)+'</div></div>';
+        h+='</div></td></tr>';
+      }
+    });
+    h+='</tbody></table>';
+
+    // ── Checkpoint log section ──────────────────────────────────────────
+    var tcps=teamCheckpoints[t.id]||{};
+    var anyCPMember=teamPs.some(function(p){return p.startTime&&!p.finishTime&&!p.dnf;});
+    if(cfg.checkpoints.length>0&&(anyStarted||anyCPMember)){
+      h+='<div style="border-top:1px solid var(--border);padding:12px 14px;background:var(--surface);">';
+      h+='<div style="font-family:DM Mono,monospace;font-size:.6rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:10px;">Team Checkpoint Times</div>';
+      h+='<div style="display:flex;flex-direction:column;gap:8px;">';
+      cfg.checkpoints.forEach(function(cp){
+        var cpData=tcps[cp]||{};
+        var inTime=cpData['in']?fmtTime(cpData['in']):'';
+        var outTime=cpData['out']?fmtTime(cpData['out']):'';
+        h+='<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">'+
+          '<span style="font-family:DM Mono,monospace;font-size:.78rem;font-weight:700;min-width:110px;color:var(--text-dim);">'+esc(cp)+'</span>'+
+          // Time In
+          '<div style="display:flex;align-items:center;gap:6px;">'+
+            '<span style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">In:</span>'+
+            (inTime
+              ? '<span style="font-family:DM Mono,monospace;font-size:.82rem;color:var(--green);font-weight:500;">'+inTime+'</span>'+
+                '<button style="padding:2px 8px;border-radius:5px;border:1px solid var(--red-dim);background:transparent;color:var(--red);font-size:.65rem;cursor:pointer;" data-action="clear-team-cp" data-tid="'+t.id+'" data-cp="'+cp+'" data-inout="in">&#10005;</button>'
+              : '<button style="padding:5px 12px;border-radius:7px;border:none;background:rgba(90,186,106,.15);color:var(--green);font-size:.75rem;font-weight:700;cursor:pointer;" data-action="log-team-cp" data-walk="'+walk+'" data-tid="'+t.id+'" data-cp="'+cp+'" data-inout="in">&#128338; Log In</button>')+
+          '</div>'+
+          '<span style="color:var(--border);font-size:.8rem;">|</span>'+
+          // Time Out
+          '<div style="display:flex;align-items:center;gap:6px;">'+
+            '<span style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;">Out:</span>'+
+            (outTime
+              ? '<span style="font-family:DM Mono,monospace;font-size:.82rem;color:var(--amber);font-weight:500;">'+outTime+'</span>'+
+                '<button style="padding:2px 8px;border-radius:5px;border:1px solid var(--red-dim);background:transparent;color:var(--red);font-size:.65rem;cursor:pointer;" data-action="clear-team-cp" data-tid="'+t.id+'" data-cp="'+cp+'" data-inout="out">&#10005;</button>'
+              : '<button style="padding:5px 12px;border-radius:7px;border:none;background:rgba(232,168,74,.12);color:var(--amber);font-size:.75rem;font-weight:700;cursor:pointer;" data-action="log-team-cp" data-walk="'+walk+'" data-tid="'+t.id+'" data-cp="'+cp+'" data-inout="out">&#128338; Log Out</button>')+
+          '</div>'+
+          // Duration if both logged
+          (inTime&&outTime
+            ? '<span style="font-family:DM Mono,monospace;font-size:.7rem;color:var(--text-muted);">Duration at CP: '+fmtMs(tcps[cp]['out']-tcps[cp]['in'])+'</span>'
+            : '')+
+        '</div>';
+      });
+      h+='</div></div>';
+    }
+    h+='</div>';
+  });
+
+  if(unteamed.length){
+    h+='<div style="margin-bottom:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden;">'+
+      '<div style="padding:10px 14px;background:var(--surface);border-bottom:1px solid var(--border);font-family:DM Mono,monospace;font-size:.75rem;color:var(--text-muted);">Unassigned Walkers</div>';
+    h+=renderWalkListRows(walk,unteamed,cfg);
+    h+='</div>';
+  }
+
+  // Results
+  h+=renderWalkResults(walk,ps);
+  return h;
+}
+
+function renderWalkList(walk,ps,cfg){
+  var sorted=ps.slice().sort(function(a,b){
+    // Sort by team code first, then bib
+    var ta=teams.find(function(t){return t.name===a.team&&t.type===W2T[walk];});
+    var tb=teams.find(function(t){return t.name===b.team&&t.type===W2T[walk];});
+    var ca=ta?tCode(ta.id):'ZZZ';
+    var cb=tb?tCode(tb.id):'ZZZ';
+    if(ca!==cb)return ca.localeCompare(cb);
+    return a.bib.localeCompare(b.bib);
+  });
+  var h='<div class="table-wrap"><table><thead><tr>'+
+    '<th>Walker ID</th><th>Name</th><th>Team</th><th>Signed In</th><th>Started</th><th>Splits</th><th>Status</th><th>Elapsed</th><th>Actions</th>'+
+    '</tr></thead><tbody>';
+  h+=renderWalkListRows(walk,sorted,cfg);
+  h+='</tbody></table></div>';
+  h+=renderWalkResults(walk,ps);
+  return h;
+}
+
+function renderWalkListRows(walk,sorted,cfg){
+  var tc_type=W2T[walk];
+  var h='';
+  sorted.forEach(function(p){
+    var key=walk+'-'+p.bib,isExp=expandedRows.has(key);
+    var elCls=p.status==='finished'?'elapsed done':'elapsed';
+    var fid=wFullId(walk,p.bib,p.team);
+    var ptW=teams.find(function(t){return t.name===p.team&&t.type===W2T[walk];});
+    var siKeyW=ptW?siKey(walk,ptW.id,p.bib):null;
+    var tcode=ptW?tCode(ptW.id):(p.team||'');
+    h+='<tr style="border-bottom:1px solid rgba(42,62,44,.4);">'+
+      '<td class="bib-cell '+walk+'" style="padding:8px 10px;font-family:DM Mono,monospace;font-weight:700;font-size:.88rem;">'+esc(fid)+'</td>'+
+      '<td style="padding:8px 10px;font-weight:500;color:var(--text);">'+esc(p.name)+'</td>'+
+      '<td style="padding:8px 10px;">'+(tcode?'<span class="type-badge type-'+tc_type+'" style="font-size:.59rem;padding:2px 7px;">'+esc(tcode)+'</span>':'<span style="color:var(--text-muted)">-</span>')+'</td>'+
+      '<td class="mono" style="padding:8px 10px;">'+(siKeyW&&signedIn[siKeyW]?'<span style="color:var(--green)">'+fmtTime(signedIn[siKeyW].time)+'</span>':'<span style="color:var(--text-muted)">-</span>')+'</td>'+
+      '<td class="mono" style="padding:8px 10px;">'+fmtTime(p.startTime)+'</td>'+
+      '<td style="padding:8px 10px;"><button class="btn btn-sm btn-dim" data-action="expand" data-walk="'+walk+'" data-bib="'+p.bib+'">'+Object.keys(p.splits).length+'/'+cfg.checkpoints.length+' '+(isExp?'&#9650;':'&#9660;')+'</button></td>'+
+      '<td style="padding:8px 10px;">'+getBadge(p,walk)+'</td>'+
+      '<td class="'+elCls+'" id="elp-'+walk+'-'+p.bib+'" style="padding:8px 10px;">'+(p.status!=='waiting'?getElapsed(p):'-')+'</td>'+
+      '<td style="padding:8px 10px;"><div style="display:flex;gap:4px;justify-content:flex-end;">'+
+        (!p.startTime?'<button class="btn btn-sm btn-green" data-action="start" data-walk="'+walk+'" data-bib="'+p.bib+'">Start</button>':'')+
+        (p.startTime&&!p.finishTime&&!p.dnf?'<button class="btn btn-sm btn-amber" data-action="finish" data-walk="'+walk+'" data-bib="'+p.bib+'">Finish</button>':'')+
+        (!p.dnf&&!p.finishTime?'<button class="btn btn-sm btn-red" data-action="dnf" data-walk="'+walk+'" data-bib="'+p.bib+'">DNF</button>':'')+
+        '<button class="btn btn-sm btn-red" data-action="remove-p" data-walk="'+walk+'" data-bib="'+p.bib+'">x</button>'+
+      '</div></td>'+
+    '</tr>';
+    if(isExp){
+      h+='<tr class="splits-row"><td colspan="10"><div class="splits-inner">';
+      if(p.startTime)h+='<div class="split-item split-start"><div class="split-cp">Start</div><div class="split-clock">'+fmtTime(p.startTime)+'</div><div class="split-elapsed">00:00:00</div></div>';
+      cfg.checkpoints.forEach(function(cp){
+        if(p.splits[cp])h+='<div class="split-item"><div class="split-cp">'+esc(cp)+'</div><div class="split-clock">'+fmtTime(p.splits[cp])+'</div><div class="split-elapsed">+'+fmtMs(p.splits[cp]-p.startTime)+'</div></div>';
+        else if(p.startTime&&!p.finishTime&&!p.dnf)h+='<button class="btn btn-sm btn-three" data-action="split" data-walk="'+walk+'" data-bib="'+p.bib+'" data-cp="'+cp+'">Log '+esc(cp)+'</button>';
+      });
+      if(p.finishTime)h+='<div class="split-item split-finish"><div class="split-cp">Finish</div><div class="split-clock">'+fmtTime(p.finishTime)+'</div><div class="split-elapsed">+'+fmtMs(p.finishTime-p.startTime)+'</div></div>';
+      h+='</div></td></tr>';
+    }
+  });
+  return h;
+}
+
+function renderWalkResults(walk,ps){
+  var fin=ps.filter(function(p){return p.status==='finished'&&p.finishTime;}).sort(function(a,b){return(a.finishTime-a.startTime)-(b.finishTime-b.startTime);});
+  var h='<div class="results-section"><h3>Results</h3>';
+  if(!fin.length)return h+'<p class="no-results">Results appear as walkers finish.</p></div>';
+  h+='<div class="podium">';
+  var medals=['1st','2nd','3rd','4th','5th','6th','7th'];
+  fin.slice(0,7).forEach(function(p,ri){
+    h+='<div class="podium-card '+(ri===0?'p1':'')+'">'+
+      '<div class="pos">'+medals[ri]+'</div>'+
+      '<div class="pname">'+esc(p.name)+'</div>'+
+      '<div class="pbib '+walk+'">'+esc(wFullId(walk,p.bib,p.team))+'</div>'+
+      '<div class="ptime">'+fmtMs(p.finishTime-p.startTime)+'</div>'+
+    '</div>';
+  });
+  return h+'</div></div>';
+}
+
+
+// ── EXPORTS ───────────────────────────────────────────────────────────────────
+function updateDatalist(){document.getElementById('team-dl').innerHTML=teams.map(function(t){return '<option value="'+t.name+'">';}).join('');}
+function exportTeams(){
+  var rows=[['Team Code','Team Name','Type','Walker ID','Bib','Name','Status']];
+  for(var i=0;i<teams.length;i++){
+    var t=teams[i],walk=T2W[t.type],tc=tCode(t.id);
+    if(!t.members.length){rows.push([tc,t.name,t.type,'','','','']);continue;}
+    for(var j=0;j<t.members.length;j++){
+      var m=t.members[j];
+      var p=participants[walk]&&participants[walk].find(function(x){return x.bib===m.bib&&x.team===t.name;});
+      rows.push([tc,t.name,t.type,tc+'-'+m.bib,m.bib,m.name,p?p.status:'registered']);
+    }
+  }
+  dlCSV(rows,'six-dales-teams.csv');
+}
+function exportSignOut(){
+  var rows=[['Walker ID','Name','Walk','Team','Signed In','Phone','Registered','Status']];
+  for(var i=0;i<signedOut.length;i++){
+    var s=signedOut[i];
+    var p=participants[s.walk]&&participants[s.walk].find(function(x){return x.bib===s.bib&&x.team===s.team;});
+    var tc=W2T[s.walk];
+    var tObj=teams.find(function(t){return t.name===s.team&&t.type===tc;});
+    var tcode=tObj?tCode(tObj.id):(s.team||'');
+    var siT=teams.find(function(t){return t.name===s.team&&t.type===W2T[s.walk];});
+    var siK=siT?siKey(s.walk,siT.id,s.bib):null;
+    rows.push([wFullId(s.walk,s.bib,s.team),s.name,WALKS[s.walk].label,tcode,siK&&signedIn[siK]?fmtTime(signedIn[siK].time):'No',s.phone||'',fmtTime(s.signOutTime),p?p.status:'registered']);
+  }
+  dlCSV(rows,'six-dales-signout.csv');
+}
+function exportWalk(walk){
+  var cfg=WALKS[walk],tc=W2T[walk];
+  var header=['Pos','Walker ID','Name','Team','Signed In','Start','Finish','Total'].concat(cfg.checkpoints);
+  var rows=[header];
+  var sorted=participants[walk].filter(function(p){return p.startTime;}).sort(function(a,b){
+    if(a.finishTime&&b.finishTime)return(a.finishTime-a.startTime)-(b.finishTime-b.startTime);
+    if(a.finishTime)return -1;if(b.finishTime)return 1;return 0;
+  });
+  for(var i=0;i<sorted.length;i++){
+    var p=sorted[i];
+    var tObj=teams.find(function(t){return t.name===p.team&&t.type===tc;});
+    var tcode=tObj?tCode(tObj.id):(p.team||'');
+    var siT=teams.find(function(t){return t.name===p.team&&t.type===W2T[walk];});
+    var siK=siT?siKey(walk,siT.id,p.bib):null;
+    var row=[p.finishTime?i+1:(p.dnf?'DNF':'DNS'),wFullId(walk,p.bib,p.team),p.name,tcode,siK&&signedIn[siK]?fmtTime(signedIn[siK].time):'No',fmtTime(p.startTime),fmtTime(p.finishTime),p.finishTime?fmtMs(p.finishTime-p.startTime):'-'];
+    for(var ci=0;ci<cfg.checkpoints.length;ci++){row.push(p.splits[cfg.checkpoints[ci]]?fmtMs(p.splits[cfg.checkpoints[ci]]-p.startTime):'-');}
+    rows.push(row);
+  }
+  dlCSV(rows,'six-dales-'+walk+'.csv');
+}
+function dlCSV(rows,filename){
+  var csv=rows.map(function(r){return r.map(function(v){return'"'+String(v).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+  var a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download=filename;a.click();
+}
+
+// Live elapsed ticker
+setInterval(function(){
+  Object.keys(WALKS).forEach(function(walk){
+    participants[walk].filter(function(p){return p.status==='on-course';}).forEach(function(p){
+      var el=document.getElementById('elp-'+walk+'-'+p.bib);
+      if(el)el.textContent=getElapsed(p);
+    });
+  });
+},1000);
+
+// ── GIST SYNC ─────────────────────────────────────────────────────────────────
+var GIST_FILE='sixdales.json';
+function saveConfig(){
+  gistId=(document.getElementById('gist-id').value||'').trim();
+  gistToken=(document.getElementById('gist-token').value||'').trim();
+  localStorage.setItem('gistId',gistId);
+  localStorage.setItem('gistToken',gistToken);
+  if(gistId&&gistToken)startSync();else{stopSync();setSyncStatus('','Not connected');}
+}
+function setSyncStatus(state,msg){
+  var dot=document.getElementById('sync-dot'),lbl=document.getElementById('sync-label');
+  if(!dot||!lbl)return;
+  dot.className='sync-dot'+(state?' '+state:'');
+  lbl.textContent=msg;
+}
+function stateSnapshot(){return JSON.stringify({teams:teams,signedOut:signedOut,signedIn:signedIn,participants:participants,teamCheckpoints:teamCheckpoints});}
+function applySnapshot(json){
+  try{var d=JSON.parse(json);if(d.teams)teams=d.teams;if(d.signedOut)signedOut=d.signedOut;if(d.signedIn)signedIn=d.signedIn;if(d.participants)participants=d.participants;if(d.teamCheckpoints)teamCheckpoints=d.teamCheckpoints;if(d.teamCheckpoints)teamCheckpoints=d.teamCheckpoints;}
+  catch(e){console.warn('Snapshot error',e);}
+}
+async function pushState(force){
+  if(!gistId||!gistToken||syncBusy)return;
+  var snap=stateSnapshot();
+  if(!force&&snap===lastHash)return;
+  syncBusy=true;setSyncStatus('busy','Saving...');
+  try{
+    var r=await fetch('https://api.github.com/gists/'+gistId,{method:'PATCH',headers:{'Authorization':'token '+gistToken,'Content-Type':'application/json'},body:JSON.stringify({files:{[GIST_FILE]:{content:snap}}})});
+    if(r.ok){lastHash=snap;setSyncStatus('ok','Saved '+new Date().toLocaleTimeString('en-GB'));}
+    else{var e=await r.json();setSyncStatus('err','Save failed: '+(e.message||r.status));}
+  }catch(e){setSyncStatus('err','Network error');}
+  syncBusy=false;
+}
+async function pullState(){
+  if(!gistId||!gistToken||syncBusy)return;
+  syncBusy=true;setSyncStatus('busy','Syncing...');
+  try{
+    var r=await fetch('https://api.github.com/gists/'+gistId,{headers:{'Authorization':'token '+gistToken}});
+    if(r.ok){
+      var data=await r.json();
+      var file=data.files&&data.files[GIST_FILE];
+      if(file&&file.content){
+        var inc=file.content;
+        if(inc!==lastHash){applySnapshot(inc);lastHash=inc;renderAll();setSyncStatus('ok','Synced '+new Date().toLocaleTimeString('en-GB'));}
+        else setSyncStatus('ok','Live '+new Date().toLocaleTimeString('en-GB'));
+      }else{syncBusy=false;await pushState(true);setSyncStatus('ok','Initialised');}
+    }else{var e=await r.json();setSyncStatus('err','Error: '+(e.message||r.status));}
+  }catch(e){setSyncStatus('err','Network error');}
+  syncBusy=false;
+}
+function forcePush(){lastHash='';pushState(true);}
+function forcePull(){pullState();}
+function startSync(){stopSync();setSyncStatus('busy','Connecting...');pullState();pullTimer=setInterval(pullState,5000);}
+function stopSync(){if(pullTimer){clearInterval(pullTimer);pullTimer=null;}}
+
+// ── WALKER REGISTRY ─────────────────────────────────────────────────────────
+var WALKER_REGISTRY = [{"id": 1, "name": "Emily Zobel Marshall", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "A"}, {"id": 2, "name": "Bethan Peter", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "B"}, {"id": 3, "name": "Cora Byrd", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "C"}, {"id": 4, "name": "Emilia Tamas", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "D"}, {"id": 5, "name": "Rose Marshall-Brown", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "E"}, {"id": 6, "name": "Darcy Wright", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "F"}, {"id": 7, "name": "Ettie Carey", "type": "JR", "originalTeam": "30th North Leeds Falkoner 1", "bib": "G"}, {"id": 8, "name": "Roger Stannard", "type": "JR", "originalTeam": "St Chads", "bib": "A"}, {"id": 9, "name": "Jenny Stannard", "type": "JR", "originalTeam": "St Chads", "bib": "B"}, {"id": 10, "name": "Sophie Curwen", "type": "JR", "originalTeam": "St Chads", "bib": "C"}, {"id": 11, "name": "Molly Wheatley", "type": "JR", "originalTeam": "St Chads", "bib": "D"}, {"id": 12, "name": "Eleanor Cole", "type": "JR", "originalTeam": "St Chads", "bib": "E"}, {"id": 13, "name": "Richard Cartwright", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "A"}, {"id": 14, "name": "Andrea Sendula", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "B"}, {"id": 15, "name": "Maizie Shaw", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "C"}, {"id": 16, "name": "Robin Shumsky", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "D"}, {"id": 17, "name": "Lenny Walker", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "E"}, {"id": 18, "name": "Coco Wright", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "F"}, {"id": 19, "name": "Dylan Peter", "type": "JR", "originalTeam": "30th North Leeds Falkoner 2", "bib": "G"}, {"id": 20, "name": "Neil Holloway", "type": "JR", "originalTeam": "Cookridge Village", "bib": "A"}, {"id": 21, "name": "Lee Bradford", "type": "JR", "originalTeam": "Cookridge Village", "bib": "B"}, {"id": 22, "name": "Oliver Witton", "type": "JR", "originalTeam": "Cookridge Village", "bib": "C"}, {"id": 23, "name": "Daniel Holloway", "type": "JR", "originalTeam": "Cookridge Village", "bib": "D"}, {"id": 24, "name": "Benjamin Witton", "type": "JR", "originalTeam": "Cookridge Village", "bib": "E"}, {"id": 25, "name": "Max Fraser", "type": "JR", "originalTeam": "Cookridge Village", "bib": "F"}, {"id": 26, "name": "Cole Bradford", "type": "JR", "originalTeam": "Cookridge Village", "bib": "G"}, {"id": 27, "name": "Ella Mae Rutson", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "A"}, {"id": 28, "name": "Nathan Ingham", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "B"}, {"id": 29, "name": "James Routledge", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "C"}, {"id": 30, "name": "Callum Box", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "D"}, {"id": 31, "name": "Olivia Houghton", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "E"}, {"id": 32, "name": "Ivan Routledge", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "F"}, {"id": 33, "name": "David Hodgkinson", "type": "JR", "originalTeam": "2nd Wakefield Croften Scouts", "bib": "G"}, {"id": 34, "name": "Kate Self", "type": "JR", "originalTeam": "St Edmund's 10th North Leeds", "bib": "A"}, {"id": 35, "name": "Daniel Self", "type": "JR", "originalTeam": "St Edmund's 10th North Leeds", "bib": "B"}, {"id": 36, "name": "Dhanesh Chandra", "type": "JR", "originalTeam": "St Edmund's 10th North Leeds", "bib": "C"}, {"id": 37, "name": "Olive Hammond", "type": "JR", "originalTeam": "St Edmund's 10th North Leeds", "bib": "D"}, {"id": 38, "name": "Matilda Gilbert", "type": "JR", "originalTeam": "St Edmund's 10th North Leeds", "bib": "E"}, {"id": 39, "name": "George Taylor", "type": "SR", "originalTeam": "Poklington Exploers 2", "bib": "A"}, {"id": 40, "name": "Freya Senior", "type": "SR", "originalTeam": "Poklington Exploers 2", "bib": "B"}, {"id": 41, "name": "Sophie Hodkin", "type": "SR", "originalTeam": "Poklington Exploers 2", "bib": "C"}, {"id": 42, "name": "Susan Clarkson", "type": "SR", "originalTeam": "Poklington Exploers 2", "bib": "D"}, {"id": 43, "name": "Cian Mcloughlin", "type": "SR", "originalTeam": "Meerkat ESU", "bib": "A"}, {"id": 44, "name": "Paul Jackson", "type": "SR", "originalTeam": "Meerkat ESU", "bib": "B"}, {"id": 45, "name": "Harry Upton", "type": "SR", "originalTeam": "Meerkat ESU", "bib": "C"}, {"id": 46, "name": "Harry Carter", "type": "SR", "originalTeam": "Meerkat ESU", "bib": "D"}, {"id": 47, "name": "Joseph Marra", "type": "SR", "originalTeam": "Flying Mallards", "bib": "A"}, {"id": 48, "name": "Mikaela Murphy", "type": "SR", "originalTeam": "Flying Mallards", "bib": "B"}, {"id": 49, "name": "Yousuf Nazir", "type": "SR", "originalTeam": "Flying Mallards", "bib": "C"}, {"id": 50, "name": "Poppy Rose-Giblin", "type": "SR", "originalTeam": "Flying Mallards", "bib": "D"}, {"id": 51, "name": "Karson Wan", "type": "SR", "originalTeam": "Flying Mallards", "bib": "E"}, {"id": 52, "name": "Rory Bennett", "type": "SR", "originalTeam": "Team Hypersonic", "bib": "A"}, {"id": 53, "name": "Callum Devereux", "type": "SR", "originalTeam": "Team Hypersonic", "bib": "B"}, {"id": 54, "name": "Chris Nix", "type": "SR", "originalTeam": "Team Hypersonic", "bib": "C"}, {"id": 55, "name": "Elizabeth Spence", "type": "SR", "originalTeam": "Team Hypersonic", "bib": "D"}, {"id": 56, "name": "Jakub Szczecinski", "type": "SR", "originalTeam": "Team Hypersonic", "bib": "E"}, {"id": 57, "name": "Alice Twiddle", "type": "SR", "originalTeam": "Phoenix ESU Alpha", "bib": "A"}, {"id": 58, "name": "Lucy Hall", "type": "SR", "originalTeam": "Phoenix ESU Alpha", "bib": "B"}, {"id": 59, "name": "Austin Morgan", "type": "SR", "originalTeam": "Phoenix ESU Alpha", "bib": "C"}, {"id": 60, "name": "Edward Naylor", "type": "SR", "originalTeam": "Phoenix ESU Alpha", "bib": "D"}, {"id": 61, "name": "James Naylor", "type": "SR", "originalTeam": "Phoenix ESU Alpha", "bib": "E"}, {"id": 62, "name": "Sophie Blee", "type": "SR", "originalTeam": "Phoenix ESU Bravo", "bib": "A"}, {"id": 63, "name": "George Stanley", "type": "SR", "originalTeam": "Phoenix ESU Bravo", "bib": "B"}, {"id": 64, "name": "Harry Warnes", "type": "SR", "originalTeam": "Phoenix ESU Bravo", "bib": "C"}, {"id": 65, "name": "Joseph Christian", "type": "SR", "originalTeam": "Phoenix ESU Bravo", "bib": "D"}, {"id": 66, "name": "Andrew Burns", "type": "SR", "originalTeam": "Phoenix ESU Bravo", "bib": "E"}, {"id": 67, "name": "Joseph Bradley", "type": "SR", "originalTeam": "Dragons go forth", "bib": "A"}, {"id": 68, "name": "William Fawcett", "type": "SR", "originalTeam": "Dragons go forth", "bib": "B"}, {"id": 69, "name": "James Jackson", "type": "SR", "originalTeam": "Dragons go forth", "bib": "C"}, {"id": 70, "name": "Liam Rhodes", "type": "SR", "originalTeam": "Dragons go forth", "bib": "D"}, {"id": 71, "name": "Leo Chao", "type": "SR", "originalTeam": "Dragons go forth", "bib": "E"}, {"id": 72, "name": "Alex Senior", "type": "SR", "originalTeam": "Dragons go forth", "bib": "F"}, {"id": 73, "name": "Ryan Clarkson", "type": "SR", "originalTeam": "Pocklington Exploers 1", "bib": "A"}, {"id": 74, "name": "Evie Wood", "type": "SR", "originalTeam": "Pocklington Exploers 1", "bib": "B"}, {"id": 75, "name": "Leon Lindley", "type": "SR", "originalTeam": "Pocklington Exploers 1", "bib": "C"}, {"id": 76, "name": "Adam Brown", "type": "SR", "originalTeam": "Pocklington Exploers 1", "bib": "D"}, {"id": 77, "name": "Matthew Chapman", "type": "SR", "originalTeam": "Pocklington Exploers 1", "bib": "E"}, {"id": 78, "name": "Angus Clowes", "type": "SR", "originalTeam": "intrepid meandering malfeasance", "bib": "A"}, {"id": 79, "name": "Euan McCallion", "type": "SR", "originalTeam": "intrepid meandering malfeasance", "bib": "B"}, {"id": 80, "name": "Jack Mellor", "type": "SR", "originalTeam": "intrepid meandering malfeasance", "bib": "C"}, {"id": 81, "name": "George Phalp", "type": "SR", "originalTeam": "intrepid meandering malfeasance", "bib": "D"}, {"id": 82, "name": "Harry Stephen", "type": "SR", "originalTeam": "intrepid meandering malfeasance", "bib": "E"}, {"id": 83, "name": "Anabel Hinchliffe", "type": "SR", "originalTeam": "The femininomenons", "bib": "A"}, {"id": 84, "name": "Caoimhe Hinchliffe", "type": "SR", "originalTeam": "The femininomenons", "bib": "B"}, {"id": 85, "name": "Rhiannon Sprenger", "type": "SR", "originalTeam": "The femininomenons", "bib": "C"}, {"id": 86, "name": "Eva Wigzell", "type": "SR", "originalTeam": "The femininomenons", "bib": "D"}, {"id": 87, "name": "Thomas Sheen", "type": "SR", "originalTeam": "Maverics ESU Team B", "bib": "A"}, {"id": 88, "name": "Eirlys Staley", "type": "SR", "originalTeam": "Maverics ESU Team B", "bib": "B"}, {"id": 89, "name": "Jack Clarke", "type": "SR", "originalTeam": "Maverics ESU Team B", "bib": "C"}, {"id": 90, "name": "Eoin D'Mello", "type": "SR", "originalTeam": "Maverics ESU Team B", "bib": "D"}, {"id": 91, "name": "Morgan Harvey", "type": "SR", "originalTeam": "Maverics ESU Team B", "bib": "E"}, {"id": 92, "name": "Jesse Sprenger", "type": "SR", "originalTeam": "Black Sheep Boys", "bib": "A"}, {"id": 93, "name": "Joseph Livermore", "type": "SR", "originalTeam": "Black Sheep Boys", "bib": "B"}, {"id": 94, "name": "Henry Vasey-Wright", "type": "SR", "originalTeam": "Black Sheep Boys", "bib": "C"}, {"id": 95, "name": "Josh Drew", "type": "SR", "originalTeam": "Black Sheep Boys", "bib": "D"}, {"id": 96, "name": "Reuben Stannard", "type": "SR", "originalTeam": "Black Sheep Boys", "bib": "E"}, {"id": 97, "name": "Albert Hydes", "type": "SR", "originalTeam": "Headingley Pirates ESU", "bib": "A"}, {"id": 98, "name": "Alfie Warrington", "type": "SR", "originalTeam": "Headingley Pirates ESU", "bib": "B"}, {"id": 99, "name": "Zak Kitson", "type": "SR", "originalTeam": "Headingley Pirates ESU", "bib": "C"}, {"id": 100, "name": "Lucas Hawkins", "type": "SR", "originalTeam": "Headingley Pirates ESU", "bib": "D"}, {"id": 101, "name": "Alex Broadbridge", "type": "SR", "originalTeam": "Intrepid Moody Teenagers", "bib": "A"}, {"id": 102, "name": "Rohan Bennett", "type": "SR", "originalTeam": "Intrepid Moody Teenagers", "bib": "B"}, {"id": 103, "name": "Archy Lowe", "type": "SR", "originalTeam": "Intrepid Moody Teenagers", "bib": "C"}, {"id": 104, "name": "Alex Pattie", "type": "SR", "originalTeam": "Intrepid Moody Teenagers", "bib": "D"}, {"id": 105, "name": "Sophie Rees", "type": "SR", "originalTeam": "Intrepid Moody Teenagers", "bib": "E"}, {"id": 106, "name": "Cerys Bennett", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "A"}, {"id": 107, "name": "Kian Davis", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "B"}, {"id": 108, "name": "Zach Evans", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "C"}, {"id": 109, "name": "Noah Glynn", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "D"}, {"id": 110, "name": "Noah Murray", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "E"}, {"id": 111, "name": "Sam Bartle", "type": "SR", "originalTeam": "Intrepid Foul Reprobates", "bib": "F"}, {"id": 112, "name": "Elliot Foster", "type": "SR", "originalTeam": "Blind Jack ESU", "bib": "A"}, {"id": 113, "name": "Oliver Megginson", "type": "SR", "originalTeam": "Blind Jack ESU", "bib": "B"}, {"id": 114, "name": "Owen Dart", "type": "SR", "originalTeam": "Blind Jack ESU", "bib": "C"}, {"id": 115, "name": "Isla Doyle", "type": "SR", "originalTeam": "Blind Jack ESU", "bib": "D"}, {"id": 116, "name": "Merlin Rowell", "type": "SR", "originalTeam": "Blind Jack ESU", "bib": "E"}, {"id": 117, "name": "Emily Dodds", "type": "SR", "originalTeam": "Mavericks ESU Team A", "bib": "A"}, {"id": 118, "name": "Lauren King", "type": "SR", "originalTeam": "Mavericks ESU Team A", "bib": "B"}, {"id": 119, "name": "Reuben Carver", "type": "SR", "originalTeam": "Mavericks ESU Team A", "bib": "C"}, {"id": 120, "name": "Ben Bramwell Walsh", "type": "SR", "originalTeam": "Mavericks ESU Team A", "bib": "D"}];
+var wdbFilter = 'ALL';
+var wdbSelected = new Set(); // walker ids
+
+function renderWalkerDB() {
+  var search = (document.getElementById('wdb-search') && document.getElementById('wdb-search').value || '').toLowerCase();
+  var filtered = WALKER_REGISTRY.filter(function(w) {
+    if (wdbFilter !== 'ALL' && w.type !== wdbFilter) return false;
+    if (search && w.name.toLowerCase().indexOf(search) < 0 && w.originalTeam.toLowerCase().indexOf(search) < 0) return false;
+    return true;
+  });
+  document.getElementById('badge-walkers').textContent = WALKER_REGISTRY.length;
+  document.getElementById('wdb-count').textContent = filtered.length + ' of ' + WALKER_REGISTRY.length + ' walkers';
+
+  // Update filter buttons
+  document.querySelectorAll('[data-action="wdb-filter"]').forEach(function(btn) {
+    var f = btn.getAttribute('data-filter');
+    btn.className = 'wdb-filter-btn' + (wdbFilter === f ? (f === 'ALL' ? ' active' : ' active-' + f) : '');
+  });
+
+  // Selected bar
+  var selBar = document.getElementById('wdb-selected-bar');
+  var selCount = document.getElementById('wdb-sel-count');
+  if (wdbSelected.size > 0) {
+    selBar.classList.remove('hidden');
+    selCount.textContent = wdbSelected.size + ' selected';
+  } else {
+    selBar.classList.add('hidden');
+  }
+
+  // Table rows
+  var tbody = document.getElementById('wdb-body');
+  if (!filtered.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted);">No walkers found.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = filtered.map(function(w) {
+    var sel = wdbSelected.has(w.id);
+    // Find current team
+    var curTeam = '';
+    var walk = T2W[w.type];
+    if (walk) {
+      teams.forEach(function(t) {
+        if (t.type === w.type && t.members.find(function(m) { return m.name === w.name; })) {
+          curTeam = tCode(t.id);
+        }
+      });
+    }
+    // Status
+    var status = '';
+    if (walk) {
+      var p = participants[walk] && participants[walk].find(function(x) { return x.name === w.name; });
+      if (p) {
+        if (p.status === 'finished') status = '<span class="status-badge badge-finished">Fin</span>';
+        else if (p.status === 'on-course') status = '<span class="status-badge badge-on-course">Out</span>';
+        else if (p.status === 'dnf') status = '<span class="status-badge badge-dnf">DNF</span>';
+        else {
+          var t2 = teams.find(function(t) { return t.name === p.team && t.type === w.type; });
+          if (t2 && signedIn[siKey(walk, t2.id, p.bib)]) status = '<span class="status-badge badge-present">Present</span>';
+          else status = '<span class="status-badge badge-waiting">Reg</span>';
+        }
+      }
+    }
+    return '<tr class="' + (sel ? 'selected' : '') + '" data-action="wdb-toggle" data-wid="' + w.id + '">' +
+      '<td><span class="wdb-check">' + (sel ? '&#10003;' : '') + '</span></td>' +
+      '<td class="wdb-name">' + esc(w.name) + '</td>' +
+      '<td><span class="wdb-type-badge ' + w.type + '">' + w.type + '</span></td>' +
+      '<td class="wdb-team">' + esc(w.originalTeam) + '</td>' +
+      '<td>' + (curTeam ? '<span class="type-badge type-' + w.type + '" style="font-size:.6rem;padding:2px 7px">' + curTeam + '</span>' : '<span style="color:var(--text-muted);font-size:.76rem">-</span>') + '</td>' +
+      '<td>' + (status || '<span style="color:var(--text-muted);font-size:.76rem">-</span>') + '</td>' +
+      '</tr>';
+  }).join('');
+}
+
+function wdbToggle(wid) {
+  if (wdbSelected.has(wid)) wdbSelected.delete(wid);
+  else wdbSelected.add(wid);
+  renderWalkerDB();
+}
+
+function wdbSetFilter(filter) {
+  wdbFilter = filter;
+  renderWalkerDB();
+}
+
+function wdbCreateTeam() {
+  if (wdbSelected.size === 0) { alert('Select at least one walker.'); return; }
+  var name = (document.getElementById('wdb-new-team-name') && document.getElementById('wdb-new-team-name').value || '').trim();
+  if (!name) { alert('Enter a team name.'); return; }
+  // Determine type from selected walkers
+  var selectedWalkers = WALKER_REGISTRY.filter(function(w) { return wdbSelected.has(w.id); });
+  var types = [...new Set(selectedWalkers.map(function(w) { return w.type; }))];
+  if (types.length > 1) { alert('All selected walkers must be the same type (SR, JR or TD).'); return; }
+  var type = types[0];
+  if (teams.find(function(t) { return t.name.toLowerCase() === name.toLowerCase() && t.type === type; })) {
+    alert('A ' + type + ' team called "' + name + '" already exists.'); return;
+  }
+  if (selectedWalkers.length > 7) { alert('Maximum 7 members per team (bibs A-G).'); return; }
+  var newTeam = { id: nextId++, name: name, type: type, members: [] };
+  var walk = T2W[type];
+  selectedWalkers.forEach(function(w, i) {
+    var bib = BIBS[i];
+    newTeam.members.push({ bib: bib, name: w.name });
+    if (!participants[walk].find(function(p) { return p.name === w.name && p.team === name; }))
+      participants[walk].push({ bib: bib, name: w.name, team: name, teamId: newTeam.id, startTime: null, finishTime: null, splits: {}, status: 'waiting', dnf: false });
+  });
+  teams.push(newTeam);
+  wdbSelected.clear();
+  document.getElementById('wdb-new-team-name').value = '';
+  renderAll();
+  // Switch to teams tab to show the new team
+  switchTab('teams');
+}
+
+// ── BUILT-IN TEAMS ────────────────────────────────────────────────────────────
+function loadBuiltIn(){
+  if(teams.length>0)return;
+  var data=[{"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "A", "name": "Emily Zobel Marshall"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "B", "name": "Bethan Peter"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "C", "name": "Cora Byrd"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "D", "name": "Emilia Tamas"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "E", "name": "Rose Marshall-Brown"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "F", "name": "Darcy Wright"}, {"team": "30th North Leeds Falkoner 1", "type": "JR", "bib": "G", "name": "Ettie Carey"}, {"team": "St Chads", "type": "JR", "bib": "A", "name": "Roger Stannard"}, {"team": "St Chads", "type": "JR", "bib": "B", "name": "Jenny Stannard"}, {"team": "St Chads", "type": "JR", "bib": "C", "name": "Sophie Curwen"}, {"team": "St Chads", "type": "JR", "bib": "D", "name": "Molly Wheatley"}, {"team": "St Chads", "type": "JR", "bib": "E", "name": "Eleanor Cole"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "A", "name": "Richard Cartwright"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "B", "name": "Andrea Sendula"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "C", "name": "Maizie Shaw"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "D", "name": "Robin Shumsky"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "E", "name": "Lenny Walker"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "F", "name": "Coco Wright"}, {"team": "30th North Leeds Falkoner 2", "type": "JR", "bib": "G", "name": "Dylan Peter"}, {"team": "Cookridge Village", "type": "JR", "bib": "A", "name": "Neil Holloway"}, {"team": "Cookridge Village", "type": "JR", "bib": "B", "name": "Lee Bradford"}, {"team": "Cookridge Village", "type": "JR", "bib": "C", "name": "Oliver Witton"}, {"team": "Cookridge Village", "type": "JR", "bib": "D", "name": "Daniel Holloway"}, {"team": "Cookridge Village", "type": "JR", "bib": "E", "name": "Benjamin Witton"}, {"team": "Cookridge Village", "type": "JR", "bib": "F", "name": "Max Fraser"}, {"team": "Cookridge Village", "type": "JR", "bib": "G", "name": "Cole Bradford"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "A", "name": "Ella Mae Rutson"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "B", "name": "Nathan Ingham"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "C", "name": "James Routledge"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "D", "name": "Callum Box"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "E", "name": "Olivia Houghton"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "F", "name": "Ivan Routledge"}, {"team": "2nd Wakefield Croften Scouts", "type": "JR", "bib": "G", "name": "David Hodgkinson"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "A", "name": "Kate Self"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "B", "name": "Daniel Self"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "C", "name": "Dhanesh Chandra"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "D", "name": "Olive Hammond"}, {"team": "St Edmund's 10th North Leeds", "type": "JR", "bib": "E", "name": "Matilda Gilbert"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "A", "name": "George Taylor"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "B", "name": "Freya Senior"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "C", "name": "Sophie Hodkin"}, {"team": "Poklington Exploers 2", "type": "SR", "bib": "D", "name": "Susan Clarkson"}, {"team": "Meerkat ESU", "type": "SR", "bib": "A", "name": "Cian Mcloughlin"}, {"team": "Meerkat ESU", "type": "SR", "bib": "B", "name": "Paul Jackson"}, {"team": "Meerkat ESU", "type": "SR", "bib": "C", "name": "Harry Upton"}, {"team": "Meerkat ESU", "type": "SR", "bib": "D", "name": "Harry Carter"}, {"team": "Flying Mallards", "type": "SR", "bib": "A", "name": "Joseph Marra"}, {"team": "Flying Mallards", "type": "SR", "bib": "B", "name": "Mikaela Murphy"}, {"team": "Flying Mallards", "type": "SR", "bib": "C", "name": "Yousuf Nazir"}, {"team": "Flying Mallards", "type": "SR", "bib": "D", "name": "Poppy Rose-Giblin"}, {"team": "Flying Mallards", "type": "SR", "bib": "E", "name": "Karson Wan"}, {"team": "Team Hypersonic", "type": "SR", "bib": "A", "name": "Rory Bennett"}, {"team": "Team Hypersonic", "type": "SR", "bib": "B", "name": "Callum Devereux"}, {"team": "Team Hypersonic", "type": "SR", "bib": "C", "name": "Chris Nix"}, {"team": "Team Hypersonic", "type": "SR", "bib": "D", "name": "Elizabeth Spence"}, {"team": "Team Hypersonic", "type": "SR", "bib": "E", "name": "Jakub Szczecinski"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "A", "name": "Alice Twiddle"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "B", "name": "Lucy Hall"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "C", "name": "Austin Morgan"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "D", "name": "Edward Naylor"}, {"team": "Phoenix ESU Alpha", "type": "SR", "bib": "E", "name": "James Naylor"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "A", "name": "Sophie Blee"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "B", "name": "George Stanley"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "C", "name": "Harry Warnes"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "D", "name": "Joseph Christian"}, {"team": "Phoenix ESU Bravo", "type": "SR", "bib": "E", "name": "Andrew Burns"}, {"team": "Dragons go forth", "type": "SR", "bib": "A", "name": "Joseph Bradley"}, {"team": "Dragons go forth", "type": "SR", "bib": "B", "name": "William Fawcett"}, {"team": "Dragons go forth", "type": "SR", "bib": "C", "name": "James Jackson"}, {"team": "Dragons go forth", "type": "SR", "bib": "D", "name": "Liam Rhodes"}, {"team": "Dragons go forth", "type": "SR", "bib": "E", "name": "Leo Chao"}, {"team": "Dragons go forth", "type": "SR", "bib": "F", "name": "Alex Senior"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "A", "name": "Ryan Clarkson"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "B", "name": "Evie Wood"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "C", "name": "Leon Lindley"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "D", "name": "Adam Brown"}, {"team": "Pocklington Exploers 1", "type": "SR", "bib": "E", "name": "Matthew Chapman"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "A", "name": "Angus Clowes"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "B", "name": "Euan McCallion"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "C", "name": "Jack Mellor"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "D", "name": "George Phalp"}, {"team": "intrepid meandering malfeasance", "type": "SR", "bib": "E", "name": "Harry Stephen"}, {"team": "The femininomenons", "type": "SR", "bib": "A", "name": "Anabel Hinchliffe"}, {"team": "The femininomenons", "type": "SR", "bib": "B", "name": "Caoimhe Hinchliffe"}, {"team": "The femininomenons", "type": "SR", "bib": "C", "name": "Rhiannon Sprenger"}, {"team": "The femininomenons", "type": "SR", "bib": "D", "name": "Eva Wigzell"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "A", "name": "Thomas Sheen"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "B", "name": "Eirlys Staley"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "C", "name": "Jack Clarke"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "D", "name": "Eoin D'Mello"}, {"team": "Maverics ESU Team B", "type": "SR", "bib": "E", "name": "Morgan Harvey"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "A", "name": "Jesse Sprenger"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "B", "name": "Joseph Livermore"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "C", "name": "Henry Vasey-Wright"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "D", "name": "Josh Drew"}, {"team": "Black Sheep Boys", "type": "SR", "bib": "E", "name": "Reuben Stannard"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "A", "name": "Albert Hydes"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "B", "name": "Alfie Warrington"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "C", "name": "Zak Kitson"}, {"team": "Headingley Pirates ESU", "type": "SR", "bib": "D", "name": "Lucas Hawkins"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "A", "name": "Alex Broadbridge"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "B", "name": "Rohan Bennett"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "C", "name": "Archy Lowe"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "D", "name": "Alex Pattie"}, {"team": "Intrepid Moody Teenagers", "type": "SR", "bib": "E", "name": "Sophie Rees"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "A", "name": "Cerys Bennett"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "B", "name": "Kian Davis"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "C", "name": "Zach Evans"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "D", "name": "Noah Glynn"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "E", "name": "Noah Murray"}, {"team": "Intrepid Foul Reprobates", "type": "SR", "bib": "F", "name": "Sam Bartle"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "A", "name": "Elliot Foster"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "B", "name": "Oliver Megginson"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "C", "name": "Owen Dart"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "D", "name": "Isla Doyle"}, {"team": "Blind Jack ESU", "type": "SR", "bib": "E", "name": "Merlin Rowell"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "A", "name": "Emily Dodds"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "B", "name": "Lauren King"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "C", "name": "Reuben Carver"}, {"team": "Mavericks ESU Team A", "type": "SR", "bib": "D", "name": "Ben Bramwell Walsh"}];
+  for(var i=0;i<data.length;i++){
+    var row=data[i];
+    var tName=row.team,type=row.type,bib=row.bib,name=row.name;
+    if(!tName||!type||!bib||!name)continue;
+    var t=teams.find(function(x){return x.name.toLowerCase()===tName.toLowerCase()&&x.type===type;});
+    if(!t){t={id:nextId++,name:tName,type:type,members:[]};teams.push(t);}
+    if(!t.members.find(function(m){return m.bib===bib;})){
+      t.members.push({bib:bib,name:name});
+      var walk=T2W[type];
+      if(!participants[walk].find(function(p){return p.bib===bib&&p.team===tName;}))
+        participants[walk].push({bib:bib,name:name,team:tName,teamId:t.id,startTime:null,finishTime:null,splits:{},status:'waiting',dnf:false});
+    }
+  }
+}
+
+// ── RENDER ALL ────────────────────────────────────────────────────────────────
+
+// ── CHECKPOINT CONFIG ──────────────────────────────────────────────────────────
+var CP_CONFIG = [
+  {slug:'settle',      label:'Settle',       cp:null,             isStart:true,  walks:['three','junior','senior']},
+  {slug:'streetgate',  label:'Street Gate',  cp:'Street Gate',    isStart:false, walks:['three','junior','senior']},
+  {slug:'kilnsey',     label:'Kilnsey',      cp:'Kilnsey',        isStart:false, walks:['three','junior','senior'], finishFor:'three'},
+  {slug:'mossdale',    label:'Mossdale',     cp:'Mossdale',       isStart:false, walks:['junior','senior']},
+  {slug:'howstean',    label:'How Stean',    cp:'How Stean',      isStart:false, walks:['junior','senior']},
+  {slug:'lofthouse',   label:'Lofthouse',    cp:'Lofthouse',      isStart:false, walks:['junior','senior'],        finishFor:'junior'},
+  {slug:'grewelthorpe',label:'Grewelthorpe', cp:'Grewelthorpe',   isStart:false, walks:['senior']},
+  {slug:'westtanfield',label:'West Tanfield',cp:'West Tanfield',  isStart:false, walks:['senior']},
+  {slug:'kirklington', label:'Kirklington',  cp:'Kirklington',    isStart:false, walks:['senior']},
+  {slug:'pickhill',    label:'Pickhill',     cp:'Pickhill',       isStart:false, walks:['senior'],                 finishFor:'senior'}
+];
+var activeCpSlug = 'settle';
+var activeCpWalk = 'junior'; // three, junior, senior
+
+function setCpTab(slug){
+  activeCpSlug = slug;
+  document.querySelectorAll('.cp-tab-btn').forEach(function(b){
+    b.classList.toggle('active', b.getAttribute('data-cpslug')===slug);
+  });
+  renderCheckpointContent();
+}
+
+function setCpWalk(walk){
+  activeCpWalk = walk;
+  // Set first valid checkpoint for this walk as active
+  var valid = CP_CONFIG.filter(function(cp){ return cp.walks.indexOf(walk)>=0; });
+  if(valid.length && valid.indexOf(CP_CONFIG.find(function(cp){return cp.slug===activeCpSlug;}))<0){
+    activeCpSlug = valid[0].slug;
+  }
+  renderCheckpoints();
+}
+
+function renderCheckpoints(){
+  var bar = document.getElementById('cp-tabs-bar');
+  if(!bar) return;
+
+  // Walk sub-tabs row
+  var walkTabs = ['three','junior','senior'].map(function(w){
+    var wInfo = WALKS[w];
+    var isActive = activeCpWalk===w;
+    var col = w==='three'?'var(--three)':w==='junior'?'var(--junior)':'var(--senior)';
+    var bg  = w==='three'?'rgba(74,184,186,.12)':w==='junior'?'rgba(184,127,212,.12)':'rgba(232,168,74,.12)';
+    return '<button style="padding:8px 18px;border-radius:8px;border:2px solid '+(isActive?col:'var(--border)')+';background:'+(isActive?bg:'transparent')+';color:'+(isActive?col:'var(--text-dim)')+';font-family:DM Sans,sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;transition:all .15s;" data-action="cp-walk" data-walk="'+w+'">'+wInfo.label+'</button>';
+  }).join('');
+
+  // Checkpoint tabs for active walk
+  var cpTabs = CP_CONFIG.filter(function(cp){
+    return cp.walks.indexOf(activeCpWalk)>=0;
+  }).map(function(cp){
+    var isActive = activeCpSlug===cp.slug;
+    var isFinish = cp.finishFor===activeCpWalk;
+    return '<button class="cp-tab-btn'+(isActive?' active':'')+(isFinish?' finish-tab':'')+'" data-action="cp-tab" data-cpslug="'+cp.slug+'">'+cp.label+(isFinish?' &#127937;':'')+'</button>';
+  }).join('');
+
+  bar.innerHTML =
+    '<div style="display:flex;gap:8px;margin-bottom:12px;padding-bottom:12px;border-bottom:1px solid var(--border);">'+walkTabs+'</div>'+
+    '<div style="display:flex;gap:3px;flex-wrap:wrap;border-bottom:1px solid var(--border);margin-bottom:14px;">'+cpTabs+'</div>';
+
+  renderCheckpointContent();
+}
+
+function renderCheckpointContent(){
+  var container = document.getElementById('cp-panel-content');
+  if(!container) return;
+  var cfg = CP_CONFIG.find(function(x){return x.slug===activeCpSlug;});
+  if(!cfg){container.innerHTML='';return;}
+
+  var h = '';
+
+  // Stats bar
+  var totalTeams=0, arrivedTeams=0;
+  cfg.walks.forEach(function(walk){
+    teams.filter(function(t){return t.type===W2T[walk];}).forEach(function(t){
+      totalTeams++;
+      var tcps=teamCheckpoints[t.id]||{};
+      if(cfg.isStart){
+        if(participants[walk].some(function(p){return p.team===t.name&&p.startTime;})) arrivedTeams++;
+      } else if(cfg.cp && tcps[cfg.cp] && tcps[cfg.cp]['in']){
+        arrivedTeams++;
+      }
+    });
+  });
+
+  h += '<div class="cp-stat-bar">';
+  h += '<div class="cp-stat-box"><span>Total Teams</span>'+totalTeams+'</div>';
+  h += '<div class="cp-stat-box"><span>Arrived</span><span style="color:var(--green);font-size:.85rem;font-weight:700;">'+arrivedTeams+'</span></div>';
+  h += '<div class="cp-stat-box"><span>Still Expected</span><span style="color:var(--amber);font-size:.85rem;font-weight:700;">'+(totalTeams-arrivedTeams)+'</span></div>';
+  h += '</div>';
+
+  // Only show the active walk tab
+  cfg.walks.filter(function(walk){return walk===activeCpWalk;}).forEach(function(walk){
+    var walkTeams = teams.filter(function(t){return t.type===W2T[walk];});
+    if(!walkTeams.length) return;
+    var wInfo = WALKS[walk];
+    var isFinishWalk = cfg.finishFor===walk;
+
+    h += '<div class="cp-walk-section">';
+    h += '<div class="cp-walk-hdr '+walk+'">';
+    h += '<span class="cp-walk-title '+walk+'">'+wInfo.label+'</span>';
+    h += '<span style="font-family:DM Mono,monospace;font-size:.7rem;color:var(--text-dim);margin-left:8px;">'+wInfo.distance+'</span>';
+    if(isFinishWalk) h += '<span style="font-family:DM Mono,monospace;font-size:.65rem;color:var(--amber);margin-left:8px;padding:2px 8px;border-radius:4px;background:rgba(232,168,74,.12);">FINISH LINE</span>';
+    h += '</div>';
+
+    walkTeams.forEach(function(t){
+      var tc = tCode(t.id);
+      var tcps = teamCheckpoints[t.id]||{};
+      var cpData = cfg.cp ? (tcps[cfg.cp]||{}) : {};
+      var inTs  = cpData['in']  || null;
+      var outTs = cpData['out'] || null;
+      var inTime  = inTs  ? fmtTime(inTs)  : '';
+      var outTime = outTs ? fmtTime(outTs) : '';
+
+      // For start, derive from participant start times
+      if(cfg.isStart){
+        var started=participants[walk].filter(function(p){return p.team===t.name&&p.startTime;});
+        if(started.length) inTime=fmtTime(Math.min.apply(null,started.map(function(p){return p.startTime;})));
+      }
+
+      h += '<div class="cp-team-card">';
+
+      // Team header
+      h += '<div class="cp-team-hdr">';
+      h += '<span class="type-badge type-'+t.type+'">'+esc(tc)+'</span>';
+      h += '<span class="cp-team-name">'+esc(t.name)+'</span>';
+      if(inTime){
+        h += '<span style="font-family:DM Mono,monospace;font-size:.72rem;color:var(--green);">&#10003; Arrived '+inTime+'</span>';
+      } else {
+        h += '<span style="font-family:DM Mono,monospace;font-size:.72rem;color:var(--text-muted);">Awaiting</span>';
+      }
+      h += '</div>';
+
+      // Time In / Out row (not for start tab)
+      if(cfg.isStart){
+        // ── SETTLE: Start buttons ─────────────────────────────────────────────
+        var cpTeamPs=t.members.map(function(m){return participants[walk].find(function(x){return x.bib===m.bib&&x.team===t.name;})||null;}).filter(Boolean);
+        var allStarted2=cpTeamPs.every(function(p){return !!p.startTime;});
+        var anyStarted2=cpTeamPs.some(function(p){return !!p.startTime;});
+        h += '<div class="cp-times-row">';
+        if(inTime){
+          h += '<span style="font-family:DM Mono,monospace;font-size:.75rem;color:var(--green);font-weight:700;">&#9654; Started '+inTime+'</span>';
+        }
+        if(!allStarted2){
+          h += '<button style="padding:7px 18px;border-radius:7px;border:none;background:var(--green);color:#0e1410;font-size:.78rem;font-weight:700;cursor:pointer;margin-left:auto;" data-action="start-team" data-walk="'+walk+'" data-tid="'+t.id+'">&#9654; Start All</button>';
+        } else {
+          h += '<span style="font-family:DM Mono,monospace;font-size:.7rem;color:var(--green);margin-left:auto;">&#10003; All started</span>';
+        }
+        h += '</div>';
+      } else {
+        // ── OTHER CHECKPOINTS: Time In / Out ──────────────────────────────────
+        h += '<div class="cp-times-row">';
+
+        // IN
+        h += '<div style="display:flex;align-items:center;gap:8px;">';
+        h += '<span style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;min-width:22px;">IN</span>';
+        if(inTime){
+          h += '<span class="cp-time-val-in">'+inTime+'</span>';
+          h += '<button class="cp-clear-btn" data-action="clear-team-cp" data-tid="'+t.id+'" data-cp="'+cfg.cp+'" data-inout="in">&#10005;</button>';
+        } else {
+          h += '<button class="cp-log-btn-in" data-action="log-team-cp" data-walk="'+walk+'" data-tid="'+t.id+'" data-cp="'+cfg.cp+'" data-inout="in">&#128338; Log Time In</button>';
+        }
+        h += '</div>';
+
+        h += '<span style="color:var(--border);margin:0 6px;">|</span>';
+
+        // OUT
+        h += '<div style="display:flex;align-items:center;gap:8px;">';
+        h += '<span style="font-family:DM Mono,monospace;font-size:.6rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;min-width:24px;">OUT</span>';
+        if(outTime){
+          h += '<span class="cp-time-val-out">'+outTime+'</span>';
+          if(inTs&&outTs) h += '<span style="font-family:DM Mono,monospace;font-size:.7rem;color:var(--text-muted);margin-left:4px;">('+fmtMs(outTs-inTs)+' at CP)</span>';
+          h += '<button class="cp-clear-btn" data-action="clear-team-cp" data-tid="'+t.id+'" data-cp="'+cfg.cp+'" data-inout="out">&#10005;</button>';
+        } else {
+          h += '<button class="cp-log-btn-out" data-action="log-team-cp" data-walk="'+walk+'" data-tid="'+t.id+'" data-cp="'+cfg.cp+'" data-inout="out">&#128338; Log Time Out</button>';
+        }
+        h += '</div>';
+
+        // Quick Log Whole Team In shortcut
+        if(!inTime){
+          h += '<button style="margin-left:auto;padding:7px 16px;border-radius:7px;border:none;background:var(--green);color:#0e1410;font-size:.76rem;font-weight:700;cursor:pointer;" data-action="log-team-cp" data-walk="'+walk+'" data-tid="'+t.id+'" data-cp="'+cfg.cp+'" data-inout="in">&#9654; Log Whole Team In</button>';
+        }
+        // Finish All — available at any checkpoint for teams finishing early
+        var cpTeamOnCourse=t.members.filter(function(m2){var p2=participants[walk].find(function(x){return x.bib===m2.bib&&x.team===t.name;});return p2&&p2.startTime&&!p2.finishTime&&!p2.dnf;});
+        if(cpTeamOnCourse.length){
+          h += '<button style="padding:7px 16px;border-radius:7px;border:none;background:rgba(232,168,74,.15);color:var(--amber);font-size:.76rem;font-weight:700;cursor:pointer;border:1px solid var(--amber-dim);" data-action="finish-team" data-walk="'+walk+'" data-tid="'+t.id+'">&#9632; Finish All</button>';
+        }
+
+        h += '</div>';
+      }
+
+      // Member rows
+      h += '<div class="cp-members">';
+      t.members.forEach(function(m){
+        var p = participants[walk].find(function(x){return x.bib===m.bib&&x.team===t.name;});
+        // Skip if not signed in (only show on Teams & Sign In tab)
+        if(!p || !signedIn[siKey(walk,t.id,m.bib)]) return;
+        var fullId = tc+'-'+m.bib;
+        var splitTime='', elapsed='';
+        if(p){
+          if(cfg.isStart && p.startTime){ splitTime=fmtTime(p.startTime); }
+          else if(cfg.cp && p.splits && p.splits[cfg.cp]){
+            splitTime=fmtTime(p.splits[cfg.cp]);
+            if(p.startTime) elapsed='+'+fmtMs(p.splits[cfg.cp]-p.startTime);
+          } else if(isFinishWalk && p.finishTime){
+            splitTime=fmtTime(p.finishTime);
+            if(p.startTime) elapsed=fmtMs(p.finishTime-p.startTime);
+          }
+        }
+        var onRoute = p && p.startTime && !p.finishTime && !p.dnf;
+
+        var isRetired = p && p.retired;
+        var rowStyle = isRetired ? 'opacity:.5;' : '';
+        h += '<div class="cp-member-row" style="'+rowStyle+'">';
+        h += '<span class="cp-member-bid" style="color:var(--'+wInfo.color+')">'+esc(fullId)+'</span>';
+        h += '<span class="cp-member-name"'+(isRetired?' style="text-decoration:line-through;color:var(--text-muted);"':'')+'>'+esc(m.name)+'</span>';
+        if(isRetired){
+          h += '<span style="font-family:DM Mono,monospace;font-size:.68rem;color:var(--red);margin-left:4px;">RETIRED</span>';
+        } else if(splitTime){
+          h += '<span class="cp-member-split">'+splitTime+'</span>';
+          if(elapsed) h += '<span class="cp-member-elapsed">'+elapsed+'</span>';
+        } else {
+          var statusTxt = p&&p.dnf?'DNF':(p&&p.finishTime?'Finished':(onRoute?'On route...':'Not started'));
+          var statusCol = p&&p.dnf?'var(--red)':(p&&p.finishTime?'var(--green)':(onRoute?'var(--amber)':'var(--text-muted)'));
+          h += '<span style="font-family:DM Mono,monospace;font-size:.72rem;color:'+statusCol+';">'+statusTxt+'</span>';
+        }
+        h += '<div style="display:flex;gap:5px;margin-left:auto;">';
+        // Individual start button on Settle
+        if(cfg.isStart && p && !p.startTime && !isRetired){
+          h += '<button style="padding:4px 12px;border-radius:6px;border:none;background:rgba(90,186,106,.18);color:var(--green);font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap;" data-action="start" data-walk="'+walk+'" data-bib="'+m.bib+'">&#9654; Start</button>';
+        }
+        if(cfg.isStart && p && p.startTime){
+          h += '<span style="font-family:DM Mono,monospace;font-size:.7rem;color:var(--green);">&#10003; '+fmtTime(p.startTime)+'</span>';
+        }
+        // Individual checkpoint log
+        if(!cfg.isStart && !splitTime && onRoute && cfg.cp && !isRetired){
+          h += '<button style="padding:4px 10px;border-radius:6px;border:none;background:rgba(90,186,106,.15);color:var(--green);font-size:.7rem;font-weight:600;cursor:pointer;white-space:nowrap;" data-action="split" data-walk="'+walk+'" data-bib="'+m.bib+'" data-cp="'+cfg.cp+'">&#128338; Log Time</button>';
+        }
+        // Individual finish — available at ANY checkpoint for early finishers
+        if(onRoute && !isRetired){
+          h += '<button style="padding:4px 10px;border-radius:6px;border:none;background:'+(isFinishWalk?'rgba(232,168,74,.2)':'rgba(232,168,74,.08)')+';color:var(--amber);font-size:.7rem;font-weight:600;cursor:pointer;border:1px solid var(--amber-dim);" data-action="finish" data-walk="'+walk+'" data-bib="'+m.bib+'">&#9632; Finish</button>';
+        }
+        // DNF button
+        if(p && onRoute && !isRetired){
+          h += '<button style="padding:4px 10px;border-radius:6px;border:1px solid var(--red-dim);background:transparent;color:var(--red);font-size:.7rem;cursor:pointer;white-space:nowrap;" data-action="dnf" data-walk="'+walk+'" data-bib="'+m.bib+'">DNF</button>';
+        }
+        // Retired toggle
+        if(p && (onRoute || isRetired)){
+          h += '<button style="padding:4px 10px;border-radius:6px;border:1px solid '+(isRetired?'var(--amber-dim)':'var(--red-dim)')+';background:transparent;color:'+(isRetired?'var(--amber)':'var(--red)')+';font-size:.7rem;cursor:pointer;white-space:nowrap;" data-action="toggle-retired" data-walk="'+walk+'" data-bib="'+m.bib+'" data-team="'+t.name+'">'+(isRetired?'&#8635; Un-retire':'&#10005; Retired')+'</button>';
+        }
+        h += '</div>';
+        h += '</div>';
+      });
+      h += '</div>';
+      h += '</div>'; // cp-team-card
+    });
+    h += '</div>'; // cp-walk-section
+  });
+
+  container.innerHTML = h;
+}
+
+
+function renderAll(){
+  renderTeams();renderSignIn();renderSignOut();
+  Object.keys(WALKS).forEach(renderWalk);
+  renderWalkerDB();
+  renderCheckpoints();
+  pushState(false);
+}
+
+// ── BOOT ──────────────────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded',async function(){
+  var gi=localStorage.getItem('gistId');
+  var gt=localStorage.getItem('gistToken');
+  if(gi){document.getElementById('gist-id').value=gi;gistId=gi;}
+  if(gt){document.getElementById('gist-token').value=gt;gistToken=gt;}
+  if(gistId&&gistToken){setSyncStatus('busy','Loading...');await pullState();startSync();}
+  if(teams.length===0)loadBuiltIn();
+  renderAll();
+  updateWalkerPicker();
+});
+
+</script></script>
+</body>
+</html>
