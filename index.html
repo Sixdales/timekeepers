@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Six Dales Timekeeper</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+:root {
+  --bg:#0e1410;--surface:#162018;--surface2:#1e2b20;--border:#2a3e2c;
+  --green:#5aba6a;--green-dim:#2d6b35;--amber:#e8a84a;--amber-dim:#7a5520;
+  --red:#e05c5c;--red-dim:#6b2d2d;--text:#d6e8d8;--text-dim:#6b8a6e;--text-muted:#3d5440;
+  --three:#4ab8ba;--three-dim:rgba(74,184,186,0.25);
+  --junior:#b87fd4;--junior-dim:rgba(184,127,212,0.25);
+  --senior:#e8a84a;--senior-dim:rgba(232,168,74,0.25);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+body::before{content:'';position:fixed;inset:0;background-image:repeating-radial-gradient(circle at 30% 40%,transparent 0,transparent 40px,rgba(90,186,106,.025) 40px,rgba(90,186,106,.025) 41px),repeating-radial-gradient(circle at 70% 60%,transparent 0,transparent 60px,rgba(90,186,106,.015) 60px,rgba(90,186,106,.015) 61px);pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:20px 16px;}
+
+/* HEADER */
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.logo h1{font-family:'Playfair Display',serif;font-size:1.9rem;font-weight:900;line-height:1;}
+.logo h1 span{color:var(--green);}
+.logo p{font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-dim);letter-spacing:.15em;text-transform:uppercase;margin-top:4px;}
+.clock{font-family:'DM Mono',monospace;font-size:1.5rem;font-weight:500;color:var(--green);}
+.clock-label{font-family:'DM Mono',monospace;font-size:.58rem;color:var(--text-muted);letter-spacing:.12em;text-transform:uppercase;}
+
+/* TABS */
+.tabs{display:flex;gap:3px;margin-bottom:20px;border-bottom:1px solid var(--border);flex-wrap:wrap;}
+.tab-btn{padding:9px 14px;border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;color:var(--text-dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;border-radius:6px 6px 0 0;}
+.tab-btn:hover{color:var(--text);background:var(--surface);}
+.tab-btn.active{color:var(--text);border-bottom-color:var(--green);background:var(--surface);}
+.tab-btn .badge{display:inline-block;font-size:.56rem;font-family:'DM Mono',monospace;padding:1px 6px;border-radius:8px;margin-left:5px;background:var(--surface2);color:var(--text-dim);}
+.tab-btn.three .badge{background:var(--three-dim);color:var(--three);}
+.tab-btn.junior .badge{background:var(--junior-dim);color:var(--junior);}
+.tab-btn.senior .badge{background:var(--senior-dim);color:var(--senior);}
+.panel{display:none;}.panel.active{display:block;}
+
+/* BUTTONS */
+.btn{padding:9px 16px;border-radius:8px;border:none;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.83rem;font-weight:500;transition:all .15s;}
+.btn:active{transform:scale(.97);}
+.btn-green{background:var(--green);color:#0e1410;}.btn-green:hover{background:#6ed47e;}
+.btn-sm{padding:5px 11px;font-size:.72rem;border-radius:6px;}
+.btn-xs{padding:3px 8px;font-size:.67rem;border-radius:5px;}
+.btn-amber{background:var(--amber);color:#0e1410;}.btn-amber:hover{background:#f0bc6a;}
+.btn-red{background:transparent;border:1px solid var(--red-dim);color:var(--red);}.btn-red:hover{background:rgba(224,92,92,.1);}
+.btn-dim{background:var(--surface2);color:var(--text-dim);border:1px solid var(--border);}.btn-dim:hover{background:var(--border);color:var(--text);}
+.btn-three{background:rgba(74,184,186,.12);color:var(--three);border:1px solid var(--three-dim);}
+.btn-junior{background:rgba(184,127,212,.12);color:var(--junior);border:1px solid var(--junior-dim);}
+.btn-senior{background:rgba(232,168,74,.12);color:var(--senior);border:1px solid var(--senior-dim);}
+
+/* INPUTS */
+.inp{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-family:'DM Sans',sans-serif;font-size:.86rem;color:var(--text);outline:none;transition:border-color .15s;}
+.inp::placeholder{color:var(--text-muted);}.inp:focus{border-color:var(--green-dim);}
+.inp-sm{padding:6px 10px;font-size:.8rem;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;}
+.inp-sm:focus{border-color:var(--green-dim);}
+.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap;}
+.divider{height:1px;background:var(--border);margin:14px 0;}
+
+/* BIB PILLS */
+.bib-picker{display:flex;gap:5px;flex-wrap:wrap;}
+.bib-pill{width:32px;height:32px;border-radius:7px;border:1px solid var(--border);background:var(--surface);color:var(--text-dim);font-family:'DM Mono',monospace;font-size:.9rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .12s;}
+.bib-pill:hover{border-color:var(--green-dim);color:var(--green);}
+.bib-pill.selected{background:var(--green);color:#0e1410;border-color:var(--green);}
+.bib-pill.used{opacity:.25;cursor:not-allowed;pointer-events:none;}
+
+/* IMPORT */
+.import-zone{border:2px dashed var(--border);border-radius:12px;padding:22px 20px;text-align:center;margin-bottom:20px;cursor:pointer;transition:all .2s;background:var(--surface);}
+.import-zone:hover,.import-zone.drag-over{border-color:var(--green-dim);background:rgba(90,186,106,.05);}
+.import-zone .iz-icon{font-size:2rem;margin-bottom:8px;opacity:.5;}
+.import-zone .iz-title{font-weight:600;font-size:.9rem;margin-bottom:4px;}
+.import-zone .iz-sub{font-size:.75rem;color:var(--text-dim);margin-bottom:12px;}
+.import-zone .iz-fmt{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--text-muted);margin-top:8px;}
+.import-result{padding:10px 14px;border-radius:8px;font-size:.82rem;margin-bottom:14px;display:none;}
+.import-result.success{background:rgba(90,186,106,.1);border:1px solid var(--green-dim);color:var(--green);}
+.import-result.error{background:rgba(224,92,92,.1);border:1px solid var(--red-dim);color:var(--red);}
+.template-hint{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;}
+.template-hint h4{font-family:'DM Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:8px;}
+.template-hint table{border-collapse:collapse;width:100%;}
+.template-hint th{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--three);padding:4px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.template-hint td{font-size:.75rem;color:var(--text-dim);padding:4px 10px;font-family:'DM Mono',monospace;}
+.template-hint tr:nth-child(even) td{background:rgba(255,255,255,.02);}
+
+/* TEAMS */
+.teams-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;}
+.team-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.team-card-header{display:flex;align-items:center;gap:10px;padding:13px 15px;border-bottom:1px solid var(--border);}
+.type-badge{font-family:'DM Mono',monospace;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:6px;letter-spacing:.08em;flex-shrink:0;}
+.type-TD{background:var(--three-dim);color:var(--three);border:1px solid rgba(74,184,186,.3);}
+.type-JR{background:var(--junior-dim);color:var(--junior);border:1px solid rgba(184,127,212,.3);}
+.type-SR{background:var(--senior-dim);color:var(--senior);border:1px solid rgba(232,168,74,.3);}
+.team-name-text{font-weight:600;font-size:.93rem;flex:1;}
+.team-card-body{padding:10px 14px;}
+.member-row{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(42,62,44,.3);font-size:.81rem;}
+.member-row:last-child{border-bottom:none;}
+.mbib{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:700;min-width:72px;}
+.mbib.TD{color:var(--three);}.mbib.JR{color:var(--junior);}.mbib.SR{color:var(--senior);}
+.mname{flex:1;}
+.team-card-footer{padding:10px 14px;border-top:1px solid var(--border);}
+.team-add-row{display:flex;gap:6px;margin-bottom:6px;align-items:center;}
+.team-empty{color:var(--text-muted);font-size:.76rem;padding:8px 0;text-align:center;}
+.teams-empty{text-align:center;padding:50px 20px;color:var(--text-muted);font-size:.83rem;grid-column:1/-1;}
+.teams-empty .icon{font-size:2.2rem;margin-bottom:10px;opacity:.35;}
+
+/* SIGN IN */
+.signin-stats{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;}
+.si-stat{flex:1;min-width:80px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;text-align:center;}
+.si-stat .val{font-family:'DM Mono',monospace;font-size:1.2rem;font-weight:500;}
+.si-stat .lbl{font-size:.58rem;font-family:'DM Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+.val-green{color:var(--green);}.val-amber{color:var(--amber);}
+.signin-body{display:grid;grid-template-columns:1fr 300px;gap:20px;}
+@media(max-width:800px){.signin-body{grid-template-columns:1fr;}}
+.signin-box{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px;}
+.signin-box h3{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:14px;display:flex;align-items:center;gap:8px;}
+.dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;background:var(--green);}
+/* Type tabs */
+.si-type-tabs{display:flex;gap:6px;margin-bottom:14px;}
+.si-type-tab{flex:1;padding:10px 6px;border-radius:8px;border:2px solid var(--border);background:var(--surface2);font-family:'DM Mono',monospace;font-size:.85rem;font-weight:700;cursor:pointer;text-align:center;transition:all .15s;letter-spacing:.05em;}
+.si-type-tab:hover{border-color:var(--green-dim);}
+.si-type-tab.active-TD{border-color:var(--three);background:rgba(74,184,186,.12);color:var(--three);}
+.si-type-tab.active-JR{border-color:var(--junior);background:rgba(184,127,212,.12);color:var(--junior);}
+.si-type-tab.active-SR{border-color:var(--senior);background:rgba(232,168,74,.12);color:var(--senior);}
+.si-type-tab .tab-count{display:block;font-size:.6rem;font-weight:400;color:var(--text-muted);margin-top:2px;}
+/* Team accordion groups */
+.si-team-list{display:flex;flex-direction:column;gap:8px;max-height:560px;overflow-y:auto;}
+.si-team-group{background:var(--surface2);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.si-team-group-header{display:flex;align-items:center;gap:10px;padding:11px 14px;cursor:pointer;user-select:none;transition:background .12s;}
+.si-team-group-header:hover{background:rgba(255,255,255,.03);}
+.si-team-code{font-family:'DM Mono',monospace;font-weight:700;font-size:1rem;}
+.si-team-code.TD{color:var(--three);}.si-team-code.JR{color:var(--junior);}.si-team-code.SR{color:var(--senior);}
+.si-team-group-name{flex:1;font-size:.83rem;font-weight:500;color:var(--text-dim);}
+.si-team-progress{font-family:'DM Mono',monospace;font-size:.65rem;color:var(--text-muted);}
+.si-team-progress.all-in{color:var(--green);}
+.si-team-chevron{font-size:.65rem;color:var(--text-muted);margin-left:4px;transition:transform .2s;display:inline-block;}
+.si-team-group.open .si-team-chevron{transform:rotate(180deg);}
+.si-team-members{display:none;flex-direction:column;gap:0;border-top:1px solid var(--border);}
+.si-team-group.open .si-team-members{display:flex;}
+/* Member sign-in rows */
+.bib-code-btn{display:flex;align-items:center;gap:12px;width:100%;padding:11px 14px;border:none;border-bottom:1px solid var(--border);background:transparent;cursor:pointer;text-align:left;transition:background .12s;position:relative;}
+.bib-code-btn:last-child{border-bottom:none;}
+.bib-code-btn:hover{background:rgba(255,255,255,.04);}
+.bib-code-btn .bib-id{font-family:'DM Mono',monospace;font-size:.92rem;font-weight:700;min-width:76px;flex-shrink:0;}
+.bib-code-btn.TD .bib-id{color:var(--three);}
+.bib-code-btn.JR .bib-id{color:var(--junior);}
+.bib-code-btn.SR .bib-id{color:var(--senior);}
+.bib-code-btn .bib-walker-name{font-family:'DM Sans',sans-serif;font-size:.88rem;font-weight:700;color:#ffffff;flex:1;}
+.bib-code-btn .si-check{margin-left:auto;width:24px;height:24px;border-radius:50%;border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.75rem;flex-shrink:0;transition:all .15s;}
+.bib-code-btn.signed-in .si-check{background:var(--green);border-color:var(--green);color:#0e1410;}
+.bib-code-btn.signed-in .bib-walker-name{opacity:.7;}
+.bib-code-btn .si-time-small{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--green);margin-left:8px;white-space:nowrap;}
+.bib-empty{color:var(--text-muted);font-size:.8rem;padding:16px 14px;text-align:center;}
+/* Signed-in list */
+.signed-in-list{display:flex;flex-direction:column;gap:6px;max-height:500px;overflow-y:auto;}
+.si-item{display:flex;align-items:center;gap:10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 11px;}
+@keyframes flashGreen{0%{background:rgba(90,186,106,.25);}100%{background:var(--surface2);}}
+.just-signed{animation:flashGreen .7s ease;border-color:var(--green-dim)!important;}
+.si-bib{font-family:'DM Mono',monospace;font-weight:700;font-size:.85rem;white-space:nowrap;}
+.si-bib.TD{color:var(--three);}.si-bib.JR{color:var(--junior);}.si-bib.SR{color:var(--senior);}
+.si-name{flex:1;font-size:.8rem;font-weight:500;}
+.si-time{font-family:'DM Mono',monospace;font-size:.68rem;color:var(--green);}
+.si-walk-lbl{font-size:.63rem;color:var(--text-muted);}
+/* Not signed in list */
+.not-signed-in{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto;margin-top:8px;}
+.nsi-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:7px;border:1px solid var(--border);background:var(--surface2);font-size:.8rem;}
+.nsi-bib{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:700;min-width:58px;}
+.nsi-bib.TD{color:var(--three);}.nsi-bib.JR{color:var(--junior);}.nsi-bib.SR{color:var(--senior);}
+
+
+/* SYNC BAR */
+.sync-bar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:16px;flex-wrap:wrap;}
+.sync-bar input{flex:1;min-width:200px;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-family:'DM Mono',monospace;font-size:.75rem;color:var(--text);outline:none;}
+.sync-bar input:focus{border-color:var(--green-dim);}
+.sync-bar input::placeholder{color:var(--text-muted);}
+.sync-status{font-family:'DM Mono',monospace;font-size:.65rem;display:flex;align-items:center;gap:6px;white-space:nowrap;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--text-muted);flex-shrink:0;}
+.sync-dot.ok{background:var(--green);animation:pulse 2s infinite;}
+.sync-dot.err{background:var(--red);}
+.sync-dot.busy{background:var(--amber);animation:pulse .6s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.sync-label{color:var(--text-muted);}
+/* SIGN OUT TABLE */
+.so-table{width:100%;border-collapse:collapse;font-size:.81rem;}
+.so-table th{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);}
+.so-table td{padding:7px 10px;border-bottom:1px solid rgba(42,62,44,.3);}
+.so-table tr:hover td{background:rgba(255,255,255,.015);}
+
+/* WALK PANELS */
+.walk-header{display:flex;align-items:center;gap:14px;margin-bottom:15px;padding:13px 16px;border-radius:10px;border:1px solid;flex-wrap:wrap;}
+.walk-header.three{border-color:var(--three-dim);background:rgba(74,184,186,.05);}
+.walk-header.junior{border-color:var(--junior-dim);background:rgba(184,127,212,.05);}
+.walk-header.senior{border-color:var(--senior-dim);background:rgba(232,168,74,.05);}
+.walk-title{font-family:'Playfair Display',serif;font-size:1.05rem;}
+.walk-title.three{color:var(--three);}.walk-title.junior{color:var(--junior);}.walk-title.senior{color:var(--senior);}
+.walk-distance{font-family:'DM Mono',monospace;font-size:.67rem;color:var(--text-dim);margin-top:2px;}
+.walk-stats{display:flex;gap:14px;margin-left:auto;}
+.walk-stat .val{font-family:'DM Mono',monospace;font-size:.95rem;font-weight:500;}
+.walk-stat .lbl{font-size:.55rem;font-family:'DM Mono',monospace;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;}
+.route-bar{display:flex;gap:5px;margin-bottom:15px;flex-wrap:wrap;align-items:center;}
+.route-cp{font-family:'DM Mono',monospace;font-size:.59rem;padding:4px 10px;border-radius:16px;border:1px solid var(--border);color:var(--text-dim);background:var(--surface);letter-spacing:.07em;text-transform:uppercase;}
+.route-cp.start{color:var(--green);border-color:var(--green-dim);background:rgba(90,186,106,.08);}
+.route-cp.ft{color:var(--three);border-color:var(--three-dim);background:rgba(74,184,186,.08);}
+.route-cp.fj{color:var(--junior);border-color:var(--junior-dim);background:rgba(184,127,212,.08);}
+.route-cp.fs{color:var(--senior);border-color:var(--senior-dim);background:rgba(232,168,74,.08);}
+.route-arrow{color:var(--text-muted);font-size:.6rem;}
+
+/* TABLES */
+.table-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;min-width:680px;}
+thead tr{border-bottom:1px solid var(--border);}
+th{font-family:'DM Mono',monospace;font-size:.56rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text-muted);padding:7px 10px;text-align:left;font-weight:400;}
+tbody tr{border-bottom:1px solid rgba(42,62,44,.4);transition:background .12s;}
+tbody tr:hover{background:rgba(255,255,255,.015);}
+td{padding:8px 10px;font-size:.81rem;vertical-align:middle;}
+td.bib-cell{font-family:'DM Mono',monospace;font-weight:700;font-size:.88rem;}
+td.bib-cell.three{color:var(--three);}td.bib-cell.junior{color:var(--junior);}td.bib-cell.senior{color:var(--senior);}
+td.mono{font-family:'DM Mono',monospace;font-size:.76rem;color:var(--text-dim);}
+td.elapsed{font-family:'DM Mono',monospace;font-weight:500;color:var(--amber);}
+td.elapsed.done{color:var(--green);}
+.status-badge{display:inline-block;font-family:'DM Mono',monospace;font-size:.56rem;padding:3px 7px;border-radius:10px;letter-spacing:.07em;text-transform:uppercase;white-space:nowrap;}
+.badge-waiting{background:rgba(42,62,44,.5);color:var(--text-muted);border:1px solid var(--border);}
+.badge-present{background:rgba(90,186,106,.08);color:var(--green);border:1px solid var(--green-dim);}
+.badge-on-course{background:rgba(232,168,74,.1);color:var(--amber);border:1px solid var(--amber-dim);}
+.badge-finished{background:rgba(90,186,106,.1);color:var(--green);border:1px solid var(--green-dim);}
+.badge-dnf{background:rgba(224,92,92,.1);color:var(--red);border:1px solid var(--red-dim);}
+.splits-row td{padding:0;background:var(--surface);}
+.splits-inner{padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.split-item{display:flex;flex-direction:column;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:6px 11px;min-width:85px;}
+.split-cp{font-family:'DM Mono',monospace;font-size:.55rem;text-transform:uppercase;letter-spacing:.08em;color:var(--three);margin-bottom:2px;}
+.split-clock{font-family:'DM Mono',monospace;font-size:.77rem;color:var(--text);}
+.split-elapsed{font-family:'DM Mono',monospace;font-size:.62rem;color:var(--text-dim);}
+.split-start{border-color:var(--green-dim);}.split-start .split-cp{color:var(--green);}
+.split-finish{border-color:var(--amber-dim);}.split-finish .split-cp{color:var(--amber);}
+.results-section{margin-top:20px;border-top:1px solid var(--border);padding-top:16px;}
+.results-section h3{font-family:'Playfair Display',serif;font-size:1rem;margin-bottom:11px;}
+.podium{display:flex;gap:10px;flex-wrap:wrap;}
+.podium-card{flex:1;min-width:120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:11px 13px;text-align:center;}
+.podium-card.p1{border-color:var(--amber-dim);background:rgba(232,168,74,.05);}
+.podium-card .pos{font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:900;color:var(--text-muted);}
+.podium-card.p1 .pos{color:var(--amber);}
+.podium-card .pname{font-weight:500;font-size:.81rem;margin:3px 0 1px;}
+.podium-card .pbib{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:700;}
+.podium-card .pbib.three{color:var(--three);}.podium-card .pbib.junior{color:var(--junior);}.podium-card .pbib.senior{color:var(--senior);}
+.podium-card .ptime{font-family:'DM Mono',monospace;font-size:.88rem;color:var(--green);margin-top:4px;}
+.podium-card .pteam{font-size:.63rem;color:var(--text-muted);margin-top:2px;}
+.actions-row{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap;}
+.empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:.81rem;}
+.empty .icon{font-size:2rem;margin-bottom:10px;opacity:.35;}
+.no-results{color:var(--text-muted);font-size:.81rem;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="logo"><h1>Six <span>Dales</span></h1><p>Event Timekeeper Console</p></div>
+    <div style="text-align:right"><div class="clock-label">Event Time</div><div class="clock" id="live-clock">--:--:--</div></div>
+  </header>
+
+  <div class="sync-bar">
+    <input id="gas-url" type="text" placeholder="Paste Google Apps Script Web App URL here to enable live sync…" oninput="saveUrl()">
+    <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span class="sync-label" id="sync-label">Not connected</span></div>
+    <button class="btn btn-dim btn-sm" onclick="forcePush()">⬆ Push</button>
+    <button class="btn btn-dim btn-sm" onclick="forcePull()">⬇ Pull</button>
+  </div>
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('teams',this)">👥 Teams <span class="badge" id="badge-teams">0</span></button>
+    <button class="tab-btn" onclick="switchTab('signin',this)">✅ Sign In <span class="badge" id="badge-signin">0</span></button>
+    <button class="tab-btn" onclick="switchTab('signout',this)">📋 Sign Out <span class="badge" id="badge-signout">0</span></button>
+    <button class="tab-btn three" onclick="switchTab('three',this)">Three Dales <span class="badge" id="badge-three">0</span></button>
+    <button class="tab-btn junior" onclick="switchTab('junior',this)">Junior <span class="badge" id="badge-junior">0</span></button>
+    <button class="tab-btn senior" onclick="switchTab('senior',this)">Senior <span class="badge" id="badge-senior">0</span></button>
+  </div>
+
+  <!-- TEAMS -->
+  <div id="panel-teams" class="panel active">
+    <div class="import-zone" id="import-zone" onclick="document.getElementById('file-input').click()" ondragover="dragOver(event)" ondragleave="dragLeave()" ondrop="dropFile(event)">
+      <div class="iz-icon">📂</div>
+      <div class="iz-title">Upload team &amp; walker file</div>
+      <div class="iz-sub">Drag &amp; drop here, or click to browse</div>
+      <button class="btn btn-dim btn-sm" onclick="event.stopPropagation();document.getElementById('file-input').click()">Choose File</button>
+      <div class="iz-fmt">Accepted: .csv · .xlsx · .xls</div>
+    </div>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFile(this.files[0])">
+    <div class="import-result" id="import-result"></div>
+    <div class="template-hint">
+      <h4>📐 Expected columns — bib must be a single letter A–G · type must be TD, JR or SR</h4>
+      <table>
+        <tr><th>team</th><th>type</th><th>bib (or "Member ID")</th><th>name</th></tr>
+        <tr><td>Dalesway Ramblers</td><td>TD</td><td>A</td><td>Alice Moorland</td></tr>
+        <tr><td>Dalesway Ramblers</td><td>TD</td><td>B</td><td>Ben Craven</td></tr>
+        <tr><td>Peak Striders</td><td>SR</td><td>A</td><td>Clara Fell</td></tr>
+      </table>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn btn-dim btn-sm" onclick="downloadTemplate('csv')">⬇ CSV Template</button>
+        <button class="btn btn-dim btn-sm" onclick="downloadTemplate('xlsx')">⬇ Excel Template</button>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="toolbar">
+      <input class="inp" id="team-name-input" type="text" placeholder="Team name" style="flex:2;min-width:150px;">
+      <select class="inp" id="team-type-input" style="min-width:180px;">
+        <option value="TD">TD — Three Dales (13 mi)</option>
+        <option value="JR">JR — Junior (23 mi)</option>
+        <option value="SR">SR — Senior (42 mi)</option>
+      </select>
+      <button class="btn btn-green" onclick="addTeam()">+ Create Team</button>
+      <button class="btn btn-dim btn-sm" onclick="exportTeams()">Export CSV</button>
+    </div>
+    <div class="teams-grid" id="teams-grid">
+      <div class="teams-empty"><div class="icon">👥</div>No teams yet. Upload a file or create one above.</div>
+    </div>
+  </div>
+
+  <!-- SIGN IN -->
+  <div id="panel-signin" class="panel">
+    <div class="signin-stats">
+      <div class="si-stat"><div class="val val-green" id="si-count">0</div><div class="lbl">Signed In</div></div>
+      <div class="si-stat"><div class="val val-amber" id="si-pending">0</div><div class="lbl">Not Yet In</div></div>
+      <div class="si-stat"><div class="val" id="si-total">0</div><div class="lbl">Registered</div></div>
+    </div>
+    <div class="signin-body">
+      <div class="signin-box">
+        <h3><span class="dot"></span>Tap a member to sign in</h3>
+        <div class="si-type-tabs">
+          <div class="si-type-tab" id="si-tab-SR" onclick="setSiTab('SR')">SR<span class="tab-count" id="si-tab-count-SR">0/0</span></div>
+          <div class="si-type-tab" id="si-tab-JR" onclick="setSiTab('JR')">JR<span class="tab-count" id="si-tab-count-JR">0/0</span></div>
+          <div class="si-type-tab" id="si-tab-TD" onclick="setSiTab('TD')">TD<span class="tab-count" id="si-tab-count-TD">0/0</span></div>
+        </div>
+        <div class="si-team-list" id="si-team-list"><div class="bib-empty">No teams registered yet.</div></div>
+        <div class="divider"></div>
+        <p style="font-size:.74rem;color:var(--text-dim);margin-bottom:8px;">Still to arrive:</p>
+        <div class="not-signed-in" id="not-signed-in-list"></div>
+      </div>
+      <div class="signin-box">
+        <h3><span class="dot"></span>Signed In Today</h3>
+        <div class="signed-in-list" id="signed-in-list">
+          <div style="color:var(--text-muted);font-size:.78rem;padding:10px 0;text-align:center;">No one signed in yet.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SIGN OUT -->
+  <div id="panel-signout" class="panel">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px;">
+      <p style="font-family:'DM Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);margin-bottom:12px;">Register Walker</p>
+      <div class="toolbar" style="flex-wrap:wrap;gap:12px;">
+        <div>
+          <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.08em;">Bib Letter</div>
+          <div class="bib-picker" id="so-bib-picker"></div>
+        </div>
+        <input class="inp" id="so-name" type="text" placeholder="Walker name" style="flex:2;min-width:130px;">
+        <select class="inp" id="so-walk" style="min-width:160px;">
+          <option value="three">Three Dales (13 mi)</option>
+          <option value="junior">Junior (23 mi)</option>
+          <option value="senior">Senior (42 mi)</option>
+        </select>
+        <input class="inp" id="so-team" type="text" placeholder="Team (optional)" style="flex:1;min-width:100px;" list="team-dl">
+        <datalist id="team-dl"></datalist>
+        <input class="inp" id="so-emergency" type="text" placeholder="Emergency contact" style="flex:1.5;min-width:110px;">
+        <input class="inp" id="so-phone" type="text" placeholder="Phone" style="flex:1;min-width:90px;">
+        <button class="btn btn-green" onclick="signOutWalker()">+ Register</button>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <span style="font-family:'DM Mono',monospace;font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text-muted);">Registered walkers</span>
+      <button class="btn btn-dim btn-sm" onclick="exportSignOut()">Export CSV</button>
+    </div>
+    <div class="table-wrap">
+      <table class="so-table">
+        <thead><tr><th>Walker ID</th><th>Name</th><th>Walk</th><th>Team</th><th>Signed In</th><th>Emergency</th><th>Phone</th><th>Registered</th><th>Status</th><th></th></tr></thead>
+        <tbody id="signout-body"><tr><td colspan="10"><div class="empty"><div class="icon">📋</div>No walkers registered yet.</div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- THREE DALES -->
+  <div id="panel-three" class="panel">
+    <div class="walk-header three">
+      <div><div class="walk-title three">Three Dales</div><div class="walk-distance">13 miles · TD · Bibs A–G</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-three-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-three-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">▶ Settle</span><span class="route-arrow">→</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">→</span>
+      <span class="route-cp ft">⬛ Kilnsey</span>
+    </div>
+    <div id="walk-three-content"></div>
+  </div>
+
+  <!-- JUNIOR -->
+  <div id="panel-junior" class="panel">
+    <div class="walk-header junior">
+      <div><div class="walk-title junior">Junior Walk</div><div class="walk-distance">23 miles · JR · Bibs A–G</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-junior-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-junior-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">▶ Settle</span><span class="route-arrow">→</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">→</span>
+      <span class="route-cp">Kilnsey</span><span class="route-arrow">→</span>
+      <span class="route-cp">Mossdale</span><span class="route-arrow">→</span>
+      <span class="route-cp">How Stean</span><span class="route-arrow">→</span>
+      <span class="route-cp fj">⬛ Lofthouse</span>
+    </div>
+    <div id="walk-junior-content"></div>
+  </div>
+
+  <!-- SENIOR -->
+  <div id="panel-senior" class="panel">
+    <div class="walk-header senior">
+      <div><div class="walk-title senior">Senior Walk</div><div class="walk-distance">42 miles · SR · Bibs A–G</div></div>
+      <div class="walk-stats">
+        <div class="walk-stat"><div class="val" id="st-senior-total">0</div><span class="lbl">Entered</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-present">0</div><span class="lbl">Present</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-course">0</div><span class="lbl">On Course</span></div>
+        <div class="walk-stat"><div class="val" id="st-senior-done">0</div><span class="lbl">Finished</span></div>
+      </div>
+    </div>
+    <div class="route-bar">
+      <span class="route-cp start">▶ Settle</span><span class="route-arrow">→</span>
+      <span class="route-cp">Street Gate</span><span class="route-arrow">→</span>
+      <span class="route-cp">Kilnsey</span><span class="route-arrow">→</span>
+      <span class="route-cp">Mossdale</span><span class="route-arrow">→</span>
+      <span class="route-cp">How Stean</span><span class="route-arrow">→</span>
+      <span class="route-cp">Lofthouse</span><span class="route-arrow">→</span>
+      <span class="route-cp">Grewelthorpe</span><span class="route-arrow">→</span>
+      <span class="route-cp">West Tanfield</span><span class="route-arrow">→</span>
+      <span class="route-cp">Kirklington</span><span class="route-arrow">→</span>
+      <span class="route-cp fs">⬛ Pickhill</span>
+    </div>
+    <div id="walk-senior-content"></div>
+  </div>
+</div>
+
+<script>
+// ── CONSTANTS ────────────────────────────────────────────────────────────────
+const BIBS = ['A','B','C','D','E','F','G'];
+const WALKS = {
+  three:  { label:'Three Dales', distance:'13 miles', code:'TD', checkpoints:['Street Gate'], finish:'Kilnsey',   color:'three'  },
+  junior: { label:'Junior',      distance:'23 miles', code:'JR', checkpoints:['Street Gate','Kilnsey','Mossdale','How Stean'], finish:'Lofthouse', color:'junior' },
+  senior: { label:'Senior',      distance:'42 miles', code:'SR', checkpoints:['Street Gate','Kilnsey','Mossdale','How Stean','Lofthouse','Grewelthorpe','West Tanfield','Kirklington'], finish:'Pickhill', color:'senior' }
+};
+const TYPE_TO_WALK = { TD:'three', JR:'junior', SR:'senior' };
+const WALK_TO_TYPE = { three:'TD', junior:'JR', senior:'SR' };
+
+// ── STATE ────────────────────────────────────────────────────────────────────
+let teams        = [];
+let signedOut    = [];
+let signedIn     = {}; // key: walk_bib -> { time, name, walk, bib }
+let participants = { three:[], junior:[], senior:[] };
+let expandedRows = new Set();
+let nextTeamId   = 1;
+let selectedSoBib = '';
+let siActiveTab  = 'SR';
+let openGroups   = new Set(); // track which team accordion groups are open
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
+setInterval(() => document.getElementById('live-clock').textContent = new Date().toLocaleTimeString('en-GB'), 1000);
+document.getElementById('live-clock').textContent = new Date().toLocaleTimeString('en-GB');
+
+const fmtTime = ts => ts ? new Date(ts).toLocaleTimeString('en-GB') : '—';
+function fmtElapsed(ms) {
+  if (!ms || ms < 0) return '—';
+  const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000), s = Math.floor((ms%60000)/1000);
+  return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+// Returns "SR01" for a team by its id
+function getTeamCode(teamId) {
+  const team = teams.find(t => t.id === teamId);
+  if (!team) return '???';
+  const sameType = teams.filter(t => t.type === team.type);
+  const idx = sameType.findIndex(t => t.id === teamId);
+  return team.type + String(idx + 1).padStart(2, '0');
+}
+
+// Returns "SR01-A" for a walker given their walk and bib
+function getWalkerFullId(walk, bib) {
+  const type = WALK_TO_TYPE[walk];
+  const p = participants[walk] && participants[walk].find(x => x.bib === bib);
+  if (!p || !p.team) return type + '??-' + bib;
+  const team = teams.find(t => t.name === p.team && t.type === type);
+  if (!team) return type + '??-' + bib;
+  return getTeamCode(team.id) + '-' + bib;
+}
+
+function allWalkers() {
+  const all = [];
+  Object.keys(participants).forEach(w => participants[w].forEach(p => all.push({...p, walk:w})));
+  return all;
+}
+
+// ── TAB SWITCHING ────────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+
+// ── FILE IMPORT ──────────────────────────────────────────────────────────────
+function dragOver(e) { e.preventDefault(); document.getElementById('import-zone').classList.add('drag-over'); }
+function dragLeave()  { document.getElementById('import-zone').classList.remove('drag-over'); }
+function dropFile(e)  { e.preventDefault(); dragLeave(); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }
+
+function handleFile(file) {
+  if (!file) return;
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv') {
+    const r = new FileReader();
+    r.onload = e => parseRows(csvToRows(e.target.result));
+    r.readAsText(file);
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    const r = new FileReader();
+    r.onload = e => {
+      const wb = XLSX.read(e.target.result, { type:'array' });
+      parseRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval:'' }));
+    };
+    r.readAsArrayBuffer(file);
+  } else {
+    showImportResult('error', 'Unsupported file. Use .csv, .xlsx or .xls');
+  }
+}
+
+function csvToRows(text) {
+  const lines = text.trim().split('\n');
+  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g,'').toLowerCase());
+  return lines.slice(1).filter(l => l.trim()).map(line => {
+    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g,''));
+    const obj = {}; headers.forEach((h,i) => obj[h] = vals[i]||''); return obj;
+  });
+}
+
+function parseRows(rows) {
+  let added = 0, skipped = 0;
+  const fc = (row, aliases) => { for (const a of aliases) { const k = Object.keys(row).find(k => k.toLowerCase().trim() === a); if (k) return row[k]; } return ''; };
+  for (const row of rows) {
+    const teamName = (fc(row, ['team','team name','team ']) || '').trim();
+    const type     = (fc(row, ['type','walk type','category']) || '').trim().toUpperCase();
+    const bib      = (fc(row, ['bib','bib letter','letter','member id','memberid','member','bib #','bib#']) || '').trim().toUpperCase();
+    const name     = (fc(row, ['name','walker name','full name','walker']) || '').trim();
+    if (!teamName || !type || !bib || !name || !['TD','JR','SR'].includes(type) || !BIBS.includes(bib)) { skipped++; continue; }
+    let team = teams.find(t => t.name.toLowerCase() === teamName.toLowerCase() && t.type === type);
+    if (!team) { team = { id:nextTeamId++, name:teamName, type, members:[] }; teams.push(team); }
+    if (!team.members.find(m => m.bib === bib)) {
+      team.members.push({ bib, name });
+      const walk = TYPE_TO_WALK[type];
+      if (!participants[walk].find(p => p.bib === bib))
+        participants[walk].push({ bib, name, team:teamName, startTime:null, finishTime:null, splits:{}, status:'waiting', dnf:false });
+      added++;
+    } else skipped++;
+  }
+  showImportResult('success', `✅ Imported ${added} walker${added!==1?'s':''}.${skipped ? ` ${skipped} skipped.` : ''}`);
+  renderAll();
+}
+
+function showImportResult(type, msg) {
+  const el = document.getElementById('import-result');
+  el.className = 'import-result ' + type; el.textContent = msg; el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 5000);
+}
+
+function downloadTemplate(fmt) {
+  const data = [
+    {team:'Dalesway Ramblers',type:'TD',bib:'A',name:'Alice Moorland'},
+    {team:'Dalesway Ramblers',type:'TD',bib:'B',name:'Ben Craven'},
+    {team:'Peak Striders',    type:'SR',bib:'A',name:'Clara Fell'}
+  ];
+  if (fmt === 'csv') {
+    const csv = 'team,type,bib,name\n' + data.map(r=>`${r.team},${r.type},${r.bib},${r.name}`).join('\n');
+    const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='six-dales-template.csv'; a.click();
+  } else {
+    const ws = XLSX.utils.json_to_sheet(data); const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws,'Walkers'); XLSX.writeFile(wb,'six-dales-template.xlsx');
+  }
+}
+
+// ── TEAMS ────────────────────────────────────────────────────────────────────
+function addTeam() {
+  const name = document.getElementById('team-name-input').value.trim();
+  const type = document.getElementById('team-type-input').value;
+  if (!name) { alert('Enter a team name.'); return; }
+  if (teams.find(t => t.name.toLowerCase()===name.toLowerCase() && t.type===type)) { alert('Team already exists.'); return; }
+  teams.push({ id:nextTeamId++, name, type, members:[] });
+  document.getElementById('team-name-input').value = '';
+  renderAll();
+}
+
+function removeTeam(id) {
+  if (!confirm('Remove this team?')) return;
+  teams = teams.filter(t => t.id !== id);
+  renderAll();
+}
+
+function addMember(tid, bib) {
+  const nameEl = document.getElementById('mname-' + tid);
+  const name = nameEl.value.trim();
+  if (!name) { alert('Enter member name.'); nameEl.focus(); return; }
+  const team = teams.find(t => t.id === tid);
+  if (!team) return;
+  if (team.members.find(m => m.bib === bib)) { alert(`Bib ${bib} already in this team.`); return; }
+  team.members.push({ bib, name });
+  const walk = TYPE_TO_WALK[team.type];
+  if (!participants[walk].find(p => p.bib === bib))
+    participants[walk].push({ bib, name, team:team.name, startTime:null, finishTime:null, splits:{}, status:'waiting', dnf:false });
+  nameEl.value = '';
+  renderAll();
+}
+
+function removeMember(tid, bib) {
+  const t = teams.find(x => x.id === tid);
+  if (!t) return;
+  t.members = t.members.filter(m => m.bib !== bib);
+  renderAll();
+}
+
+function getMemberBadge(type, bib) {
+  const p = participants[TYPE_TO_WALK[type]] && participants[TYPE_TO_WALK[type]].find(x => x.bib === bib);
+  if (!p) return '';
+  if (p.status==='finished') return '<span class="status-badge badge-finished">Fin</span>';
+  if (p.status==='on-course') return '<span class="status-badge badge-on-course">Out</span>';
+  if (p.status==='dnf') return '<span class="status-badge badge-dnf">DNF</span>';
+  const siKey = TYPE_TO_WALK[type] + '_' + bib;
+  if (signedIn[siKey]) return '<span class="status-badge badge-present">Present</span>';
+  return '<span class="status-badge badge-waiting">Wait</span>';
+}
+
+function renderTeams() {
+  document.getElementById('badge-teams').textContent = teams.length;
+  updateDatalist();
+  const grid = document.getElementById('teams-grid');
+  if (!teams.length) { grid.innerHTML = `<div class="teams-empty"><div class="icon">👥</div>No teams yet. Upload a file or create one above.</div>`; return; }
+  let html = '';
+  for (const t of teams) {
+    const walk = TYPE_TO_WALK[t.type];
+    const tcode = getTeamCode(t.id);
+    const fin = t.members.filter(m => participants[walk] && participants[walk].find(p => p.bib===m.bib && p.status==='finished')).length;
+    const used = t.members.map(m => m.bib);
+    html += `<div class="team-card">
+      <div class="team-card-header">
+        <span class="type-badge type-${t.type}">${tcode}</span>
+        <span class="team-name-text">${t.name}</span>
+        <button class="btn btn-xs btn-red" onclick="removeTeam(${t.id})">✕</button>
+      </div>
+      <div class="team-card-body">`;
+    if (!t.members.length) html += `<div class="team-empty">No members — add below</div>`;
+    else for (const m of t.members) html += `<div class="member-row">
+      <span class="mbib ${t.type}">${tcode}-${m.bib}</span>
+      <span class="mname">${m.name}</span>
+      <span>${getMemberBadge(t.type, m.bib)}</span>
+      <button class="btn btn-xs btn-red" onclick="removeMember(${t.id},'${m.bib}')">✕</button>
+    </div>`;
+    html += `</div>
+    <div class="team-card-footer">
+      <p style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em;">Pick bib letter then enter name:</p>
+      <div class="bib-picker" style="margin-bottom:8px;">`;
+    for (const b of BIBS) html += `<div class="bib-pill${used.includes(b)?' used':''}" onclick="addMember(${t.id},'${b}')">${b}</div>`;
+    html += `</div>
+      <div class="team-add-row">
+        <input class="inp-sm" id="mname-${t.id}" placeholder="Member name" style="flex:1">
+      </div>
+      <div style="font-family:'DM Mono',monospace;font-size:.6rem;color:var(--text-muted);margin-top:8px;">${t.members.length} member${t.members.length!==1?'s':''} · ${fin} finished · ${WALKS[walk].label}</div>
+    </div></div>`;
+  }
+  grid.innerHTML = html;
+}
+
+// ── SIGN IN ──────────────────────────────────────────────────────────────────
+function setSiTab(type) { siActiveTab = type; renderSignIn(); }
+
+function toggleSiGroup(teamId) {
+  if (openGroups.has(teamId)) openGroups.delete(teamId);
+  else openGroups.add(teamId);
+  renderSignIn();
+}
+
+function signInMember(walk, bib) {
+  const p = participants[walk] && participants[walk].find(x => x.bib === bib);
+  if (!p) { alert('Walker not found.'); return; }
+  const key = walk + '_' + bib;
+  if (signedIn[key]) {
+    if (confirm(`${p.name} already signed in at ${fmtTime(signedIn[key].time)}. Undo?`)) {
+      delete signedIn[key]; renderAll();
+    }
+    return;
+  }
+  signedIn[key] = { time:Date.now(), name:p.name, walk, bib };
+  renderAll();
+  setTimeout(() => { const el = document.getElementById('si-item-' + key); if (el) el.classList.add('just-signed'); }, 30);
+}
+
+function renderSignIn() {
+  const all = allWalkers();
+  const siKeys = Object.keys(signedIn);
+  document.getElementById('badge-signin').textContent = siKeys.length;
+  document.getElementById('si-count').textContent = siKeys.length;
+  document.getElementById('si-pending').textContent = Math.max(0, all.length - siKeys.length);
+  document.getElementById('si-total').textContent = all.length;
+
+  // Update type tab counts + active styling
+  ['SR','JR','TD'].forEach(type => {
+    const walk = TYPE_TO_WALK[type];
+    const ps = participants[walk];
+    const inCount = ps.filter(p => signedIn[walk + '_' + p.bib]).length;
+    const tab = document.getElementById('si-tab-' + type);
+    const cnt = document.getElementById('si-tab-count-' + type);
+    if (cnt) cnt.textContent = inCount + '/' + ps.length;
+    if (tab) tab.className = 'si-type-tab' + (siActiveTab === type ? ' active-' + type : '');
+  });
+
+  // Build team accordion list for active tab
+  const activeWalk = TYPE_TO_WALK[siActiveTab];
+  const teamsForType = teams.filter(t => t.type === siActiveTab);
+  const listEl = document.getElementById('si-team-list');
+  let html = '';
+
+  if (!teamsForType.length) {
+    html = `<div class="bib-empty">No ${siActiveTab} teams registered yet.</div>`;
+  } else {
+    for (const t of teamsForType) {
+      const tcode = getTeamCode(t.id);
+      const walk = TYPE_TO_WALK[t.type];
+      const inCount = t.members.filter(m => signedIn[walk + '_' + m.bib]).length;
+      const total = t.members.length;
+      const allIn = total > 0 && inCount === total;
+      const isOpen = openGroups.has(t.id);
+      html += `<div class="si-team-group${isOpen ? ' open' : ''}" id="sig-${t.id}">
+        <div class="si-team-group-header" onclick="toggleSiGroup(${t.id})">
+          <span class="si-team-code ${t.type}">${tcode}</span>
+          <span class="si-team-group-name">${t.name}</span>
+          <span class="si-team-progress${allIn ? ' all-in' : ''}">${allIn ? '✅ All in' : inCount + '/' + total}</span>
+          <span class="si-team-chevron">▼</span>
+        </div>
+        <div class="si-team-members">`;
+      if (!t.members.length) {
+        html += `<div style="color:var(--text-muted);font-size:.78rem;grid-column:1/-1;padding:4px 0;">No members added.</div>`;
+      } else {
+        for (const m of t.members) {
+          const key = walk + '_' + m.bib;
+          const isIn = !!signedIn[key];
+          const fullId = tcode + '-' + m.bib;
+          const siTime = signedIn[key] ? fmtTime(signedIn[key].time) : '';
+          html += `<button class="bib-code-btn ${t.type}${isIn ? ' signed-in' : ''}" onclick="signInMember('${walk}','${m.bib}')">
+            <span class="bib-id">${fullId}</span>
+            <span class="bib-walker-name">${m.name}</span>
+            ${isIn ? `<span class="si-time-small">${siTime}</span>` : ''}
+            <span class="si-check">${isIn ? '✓' : ''}</span>
+          </button>`;
+        }
+      }
+      html += `</div></div>`;
+    }
+  }
+  listEl.innerHTML = html;
+
+  // Signed-in list (all types, newest first)
+  const siList = document.getElementById('signed-in-list');
+  if (!siKeys.length) {
+    siList.innerHTML = `<div style="color:var(--text-muted);font-size:.78rem;padding:10px 0;text-align:center;">No one signed in yet.</div>`;
+  } else {
+    siList.innerHTML = [...siKeys].sort((a,b) => signedIn[b].time - signedIn[a].time).map(key => {
+      const s = signedIn[key];
+      const type = s.walk ? WALK_TO_TYPE[s.walk] : '';
+      const fullId = getWalkerFullId(s.walk, s.bib);
+      return `<div class="si-item" id="si-item-${key}">
+        <span class="si-bib ${type}">${fullId}</span>
+        <div style="flex:1"><div class="si-name">${s.name}</div><div class="si-walk-lbl">${s.walk ? WALKS[s.walk].label : ''}</div></div>
+        <span class="si-time">${fmtTime(s.time)}</span>
+      </div>`;
+    }).join('');
+  }
+
+  // Still to arrive
+  const pending = all.filter(p => !signedIn[p.walk + '_' + p.bib]);
+  const nsi = document.getElementById('not-signed-in-list');
+  if (!pending.length) {
+    nsi.innerHTML = `<div style="color:var(--green);font-size:.78rem;padding:8px 0;text-align:center;">✅ Everyone signed in!</div>`;
+  } else {
+    nsi.innerHTML = pending.map(p => {
+      const type = WALK_TO_TYPE[p.walk];
+      const fullId = getWalkerFullId(p.walk, p.bib);
+      return `<div class="nsi-item">
+        <span class="nsi-bib ${type}">${fullId}</span>
+        <span style="flex:1;font-weight:500">${p.name}${p.team ? `<span style="color:var(--text-muted);font-size:.68rem;margin-left:6px">${p.team}</span>` : ''}</span>
+        <span style="font-size:.65rem;color:var(--text-muted)">${WALKS[p.walk].label}</span>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── SIGN OUT ─────────────────────────────────────────────────────────────────
+function renderSoBibPicker() {
+  const picker = document.getElementById('so-bib-picker');
+  if (!picker) return;
+  picker.innerHTML = BIBS.map(b => `<div class="bib-pill${selectedSoBib===b?' selected':''}" onclick="selectSoBib('${b}')">${b}</div>`).join('');
+}
+
+function selectSoBib(b) { selectedSoBib = b; renderSoBibPicker(); }
+
+function signOutWalker() {
+  const bib  = selectedSoBib;
+  const name = document.getElementById('so-name').value.trim();
+  const walk = document.getElementById('so-walk').value;
+  const team = document.getElementById('so-team').value.trim();
+  const emergency = document.getElementById('so-emergency').value.trim();
+  const phone     = document.getElementById('so-phone').value.trim();
+  if (!bib)  { alert('Select a bib letter.'); return; }
+  if (!name) { alert('Enter walker name.'); return; }
+  if (signedOut.find(x => x.bib===bib && x.walk===walk)) { alert(`Bib ${bib} already registered for ${WALKS[walk].label}.`); return; }
+  signedOut.push({ bib, name, walk, team, emergency, phone, signOutTime:Date.now() });
+  if (!participants[walk].find(p => p.bib === bib))
+    participants[walk].push({ bib, name, team, startTime:null, finishTime:null, splits:{}, status:'waiting', dnf:false });
+  selectedSoBib = '';
+  ['so-name','so-emergency','so-phone','so-team'].forEach(id => document.getElementById(id).value = '');
+  renderAll();
+}
+
+function removeSignOut(bib, walk) {
+  if (!confirm('Remove?')) return;
+  signedOut = signedOut.filter(x => !(x.bib===bib && x.walk===walk));
+  renderAll();
+}
+
+function renderSignOut() {
+  renderSoBibPicker();
+  document.getElementById('badge-signout').textContent = signedOut.length;
+  const tbody = document.getElementById('signout-body');
+  if (!signedOut.length) { tbody.innerHTML = `<tr><td colspan="10"><div class="empty"><div class="icon">📋</div>No walkers registered yet.</div></td></tr>`; return; }
+  let html = '';
+  for (const s of signedOut) {
+    const p = participants[s.walk] && participants[s.walk].find(x => x.bib === s.bib);
+    let sl='Registered', sc='badge-waiting';
+    if (p && p.status==='finished') { sl='Finished'; sc='badge-finished'; }
+    else if (p && p.status==='dnf') { sl='DNF'; sc='badge-dnf'; }
+    else if (p && p.status==='on-course') { sl='On Course'; sc='badge-on-course'; }
+    else { const siKey=s.walk+'_'+s.bib; if (signedIn[siKey]) { sl='Present'; sc='badge-present'; } }
+    const tc = WALK_TO_TYPE[s.walk];
+    const fullId = getWalkerFullId(s.walk, s.bib);
+    const teamCode = s.team ? (()=>{ const t=teams.find(t=>t.name===s.team&&t.type===tc); return t?getTeamCode(t.id):s.team; })() : '';
+    const siKey = s.walk + '_' + s.bib;
+    html += `<tr>
+      <td class="bib-cell ${s.walk}">${fullId}</td>
+      <td style="font-weight:500">${s.name}</td>
+      <td><span class="status-badge" style="color:var(--${s.walk});border:1px solid var(--${s.walk}-dim);background:rgba(0,0,0,.2)">${WALKS[s.walk].label}</span></td>
+      <td>${teamCode ? `<span class="type-badge type-${tc}" style="font-size:.6rem;padding:2px 7px">${teamCode}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td class="mono">${signedIn[siKey] ? '<span style="color:var(--green)">' + fmtTime(signedIn[siKey].time) + '</span>' : '<span style="color:var(--text-muted)">Not in</span>'}</td>
+      <td style="color:var(--text-dim)">${s.emergency||'—'}</td>
+      <td class="mono">${s.phone||'—'}</td>
+      <td class="mono">${fmtTime(s.signOutTime)}</td>
+      <td><span class="status-badge ${sc}">${sl}</span></td>
+      <td><button class="btn btn-xs btn-red" onclick="removeSignOut('${s.bib}','${s.walk}')">✕</button></td>
+    </tr>`;
+  }
+  tbody.innerHTML = html;
+}
+
+// ── WALK TIMING ──────────────────────────────────────────────────────────────
+function startP(walk, bib)   { const p=participants[walk].find(x=>x.bib===bib); if(!p||p.startTime)return; p.startTime=Date.now(); p.status='on-course'; renderAll(); }
+function finishP(walk, bib)  { const p=participants[walk].find(x=>x.bib===bib); if(!p||!p.startTime||p.finishTime)return; p.finishTime=Date.now(); p.status='finished'; renderAll(); }
+function logSplit(walk,bib,cp){ const p=participants[walk].find(x=>x.bib===bib); if(!p||!p.startTime)return; p.splits[cp]=Date.now(); renderAll(); }
+function markDNF(walk, bib)  { const p=participants[walk].find(x=>x.bib===bib); if(!p||!confirm(`Mark ${p.name} (${getWalkerFullId(walk,bib)}) as DNF?`))return; p.dnf=true; p.status='dnf'; renderAll(); }
+function removeP(walk, bib)  { if(!confirm('Remove?'))return; participants[walk]=participants[walk].filter(x=>x.bib!==bib); expandedRows.delete(walk+'-'+bib); renderAll(); }
+function toggleExpand(walk, bib) { const k=walk+'-'+bib; expandedRows.has(k)?expandedRows.delete(k):expandedRows.add(k); renderAll(); }
+
+function addManualP(walk) {
+  const sel = document.getElementById('add-bib-sel-' + walk);
+  const bib  = sel.value;
+  const name = document.getElementById('add-name-' + walk).value.trim();
+  if (!bib)  { alert('Select a bib letter.'); return; }
+  if (!name) { alert('Enter walker name.'); return; }
+  if (participants[walk].find(p => p.bib === bib)) { alert(`Bib ${bib} already in this walk.`); return; }
+  participants[walk].push({ bib, name, team:'', startTime:null, finishTime:null, splits:{}, status:'waiting', dnf:false });
+  document.getElementById('add-name-' + walk).value = ''; sel.value = '';
+  renderAll();
+}
+
+function getElapsed(p) { return p.startTime ? fmtElapsed((p.finishTime||Date.now()) - p.startTime) : '—'; }
+
+function getBadge(p, walk) {
+  if (p.status==='finished') return '<span class="status-badge badge-finished">Finished</span>';
+  if (p.status==='on-course') return '<span class="status-badge badge-on-course">On Course</span>';
+  if (p.status==='dnf') return '<span class="status-badge badge-dnf">DNF</span>';
+  if (signedIn[walk+'_'+p.bib]) return '<span class="status-badge badge-present">Present</span>';
+  return '<span class="status-badge badge-waiting">Waiting</span>';
+}
+
+function renderWalk(walk) {
+  const cfg = WALKS[walk], ps = participants[walk];
+  document.getElementById('st-'+walk+'-total').textContent   = ps.length;
+  document.getElementById('st-'+walk+'-present').textContent = ps.filter(p => signedIn[walk+'_'+p.bib] && p.status==='waiting').length;
+  document.getElementById('st-'+walk+'-course').textContent  = ps.filter(p => p.status==='on-course').length;
+  document.getElementById('st-'+walk+'-done').textContent    = ps.filter(p => p.status==='finished').length;
+  document.getElementById('badge-'+walk).textContent = ps.length;
+
+  const used = ps.map(p => p.bib);
+  const opts = BIBS.filter(b => !used.includes(b)).map(b => `<option value="${b}">${b}</option>`).join('');
+
+  let html = `<div class="toolbar">
+    <select class="inp" id="add-bib-sel-${walk}" style="max-width:90px;font-family:'DM Mono',monospace;font-weight:700;"><option value="">Bib</option>${opts}</select>
+    <input class="inp" id="add-name-${walk}" type="text" placeholder="Walker name" style="flex:2">
+    <button class="btn btn-${walk}" onclick="addManualP('${walk}')">+ Add Walker</button>
+    <button class="btn btn-dim btn-sm" onclick="exportWalk('${walk}')">Export CSV</button>
+  </div>`;
+
+  if (!ps.length) {
+    html += `<div class="empty"><div class="icon">🥾</div>No walkers yet.</div>`;
+  } else {
+    const sorted = [...ps].sort((a,b) => {
+      if (a.status==='finished'&&b.status==='finished') return (a.finishTime-a.startTime)-(b.finishTime-b.startTime);
+      if (a.status==='finished') return -1; if (b.status==='finished') return 1;
+      if (a.status==='on-course'&&b.status!=='on-course') return -1; if (b.status==='on-course') return 1;
+      return a.bib.localeCompare(b.bib);
+    });
+    const tc = WALK_TO_TYPE[walk];
+    html += `<div class="table-wrap"><table><thead><tr>
+      <th>Walker ID</th><th>Name</th><th>Team</th><th>Signed In</th><th>Started</th><th>Splits</th><th>Status</th><th>Elapsed</th><th style="text-align:right">Actions</th>
+    </tr></thead><tbody>`;
+    for (const p of sorted) {
+      const key = walk+'-'+p.bib, isExp = expandedRows.has(key);
+      const elCls = p.status==='finished' ? 'elapsed done' : 'elapsed';
+      const fullId = getWalkerFullId(walk, p.bib);
+      const siKey = walk+'_'+p.bib;
+      const teamCode = p.team ? (()=>{ const t=teams.find(t=>t.name===p.team&&t.type===tc); return t?getTeamCode(t.id):p.team; })() : '';
+      html += `<tr>
+        <td class="bib-cell ${walk}">${fullId}</td>
+        <td style="font-weight:500">${p.name}</td>
+        <td>${teamCode ? `<span class="type-badge type-${tc}" style="font-size:.59rem;padding:2px 7px">${teamCode}</span>` : '<span style="color:var(--text-muted);font-size:.75rem">—</span>'}</td>
+        <td class="mono">${signedIn[siKey] ? '<span style="color:var(--green)">'+fmtTime(signedIn[siKey].time)+'</span>' : '<span style="color:var(--text-muted)">—</span>'}</td>
+        <td class="mono">${fmtTime(p.startTime)}</td>
+        <td><button class="btn btn-sm btn-dim" onclick="toggleExpand('${walk}','${p.bib}')">${Object.keys(p.splits).length}/${cfg.checkpoints.length} ${isExp?'▲':'▼'}</button></td>
+        <td>${getBadge(p, walk)}</td>
+        <td class="${elCls}" id="elp-${walk}-${p.bib}">${p.status!=='waiting' ? getElapsed(p) : '—'}</td>
+        <td><div class="actions-row">
+          ${!p.startTime ? `<button class="btn btn-sm btn-green" onclick="startP('${walk}','${p.bib}')">▶ Start</button>` : ''}
+          ${p.startTime&&!p.finishTime&&!p.dnf ? `<button class="btn btn-sm btn-amber" onclick="finishP('${walk}','${p.bib}')">⬛ Finish</button>` : ''}
+          ${!p.dnf&&!p.finishTime ? `<button class="btn btn-sm btn-red" onclick="markDNF('${walk}','${p.bib}')">DNF</button>` : ''}
+          <button class="btn btn-sm btn-red" onclick="removeP('${walk}','${p.bib}')">✕</button>
+        </div></td>
+      </tr>`;
+      if (isExp) {
+        html += `<tr class="splits-row"><td colspan="9"><div class="splits-inner">`;
+        if (p.startTime) html += `<div class="split-item split-start"><div class="split-cp">Start · Settle</div><div class="split-clock">${fmtTime(p.startTime)}</div><div class="split-elapsed">00:00:00</div></div>`;
+        for (const cp of cfg.checkpoints) {
+          if (p.splits[cp]) html += `<div class="split-item"><div class="split-cp">${cp}</div><div class="split-clock">${fmtTime(p.splits[cp])}</div><div class="split-elapsed">+${fmtElapsed(p.splits[cp]-p.startTime)}</div></div>`;
+          else if (p.startTime&&!p.finishTime&&!p.dnf) html += `<button class="btn btn-sm btn-three" style="align-self:center" onclick="logSplit('${walk}','${p.bib}','${cp}')">Log ${cp}</button>`;
+        }
+        if (p.finishTime) html += `<div class="split-item split-finish"><div class="split-cp">Finish · ${cfg.finish}</div><div class="split-clock">${fmtTime(p.finishTime)}</div><div class="split-elapsed">+${fmtElapsed(p.finishTime-p.startTime)}</div></div>`;
+        html += `</div></td></tr>`;
+      }
+    }
+    html += `</tbody></table></div>`;
+
+    const fin = ps.filter(p => p.status==='finished'&&p.finishTime).sort((a,b)=>(a.finishTime-a.startTime)-(b.finishTime-b.startTime));
+    html += `<div class="results-section"><h3>Results</h3>`;
+    if (!fin.length) html += `<p class="no-results">Results appear as walkers finish.</p>`;
+    else {
+      html += `<div class="podium">`;
+      fin.slice(0,7).forEach((p,i) => {
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}`;
+        const fid = getWalkerFullId(walk, p.bib);
+        html += `<div class="podium-card ${i===0?'p1':''}">
+          <div class="pos">${medal}</div>
+          <div class="pname">${p.name}</div>
+          <div class="pbib ${walk}">${fid}</div>
+          ${p.team ? `<div class="pteam">${p.team}</div>` : ''}
+          <div class="ptime">${fmtElapsed(p.finishTime-p.startTime)}</div>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+    html += `</div>`;
+  }
+  document.getElementById('walk-' + walk + '-content').innerHTML = html;
+}
+
+// ── EXPORTS ──────────────────────────────────────────────────────────────────
+function updateDatalist() {
+  document.getElementById('team-dl').innerHTML = teams.map(t => `<option value="${t.name}">`).join('');
+}
+
+function exportTeams() {
+  const rows = [['Team Code','Team Name','Type','Walker ID','Bib','Name','Status']];
+  for (const t of teams) {
+    const walk = TYPE_TO_WALK[t.type]; const tcode = getTeamCode(t.id);
+    if (!t.members.length) rows.push([tcode, t.name, t.type,'','','','']);
+    for (const m of t.members) {
+      const p = participants[walk] && participants[walk].find(x => x.bib===m.bib);
+      rows.push([tcode, t.name, t.type, tcode+'-'+m.bib, m.bib, m.name, p?p.status:'registered']);
+    }
+  }
+  dlCSV(rows, 'six-dales-teams.csv');
+}
+
+function exportSignOut() {
+  const rows = [['Walker ID','Name','Walk','Team Code','Signed In','Emergency','Phone','Registered','Status']];
+  for (const s of signedOut) {
+    const p = participants[s.walk] && participants[s.walk].find(x => x.bib===s.bib);
+    const tc = WALK_TO_TYPE[s.walk];
+    const teamCode = s.team ? (()=>{ const t=teams.find(t=>t.name===s.team&&t.type===tc); return t?getTeamCode(t.id):s.team; })() : '';
+    const siKey = s.walk+'_'+s.bib;
+    rows.push([getWalkerFullId(s.walk,s.bib), s.name, WALKS[s.walk].label, teamCode, signedIn[siKey]?fmtTime(signedIn[siKey].time):'No', s.emergency, s.phone, fmtTime(s.signOutTime), p?p.status:'registered']);
+  }
+  dlCSV(rows, 'six-dales-signout.csv');
+}
+
+function exportWalk(walk) {
+  const cfg = WALKS[walk]; const tc = WALK_TO_TYPE[walk];
+  const rows = [['Pos','Walker ID','Name','Team Code','Signed In','Start','Finish','Total',...cfg.checkpoints]];
+  [...participants[walk]].filter(p => p.startTime).sort((a,b) => {
+    if (a.finishTime&&b.finishTime) return (a.finishTime-a.startTime)-(b.finishTime-b.startTime);
+    if (a.finishTime) return -1; if (b.finishTime) return 1; return 0;
+  }).forEach((p,i) => {
+    const teamCode = p.team ? (()=>{ const t=teams.find(t=>t.name===p.team&&t.type===tc); return t?getTeamCode(t.id):p.team; })() : '';
+    const siKey = walk+'_'+p.bib;
+    rows.push([p.finishTime?i+1:(p.dnf?'DNF':'DNS'), getWalkerFullId(walk,p.bib), p.name, teamCode, signedIn[siKey]?fmtTime(signedIn[siKey].time):'No', fmtTime(p.startTime), fmtTime(p.finishTime), p.finishTime?fmtElapsed(p.finishTime-p.startTime):'—', ...cfg.checkpoints.map(cp => p.splits[cp]?fmtElapsed(p.splits[cp]-p.startTime):'—')]);
+  });
+  dlCSV(rows, 'six-dales-' + walk + '.csv');
+}
+
+function dlCSV(rows, filename) {
+  const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download=filename; a.click();
+}
+
+// ── LIVE ELAPSED TICKER ──────────────────────────────────────────────────────
+setInterval(() => {
+  Object.keys(WALKS).forEach(walk => {
+    participants[walk].filter(p => p.status==='on-course').forEach(p => {
+      const el = document.getElementById('elp-'+walk+'-'+p.bib);
+      if (el) el.textContent = getElapsed(p);
+    });
+  });
+}, 1000);
+
+// ── SYNC ENGINE ──────────────────────────────────────────────────────────────
+let syncUrl      = localStorage.getItem('gasUrl') || '';
+let syncBusy     = false;
+let lastPushHash = '';
+let pullInterval = null;
+
+function saveUrl() {
+  syncUrl = document.getElementById('gas-url').value.trim();
+  localStorage.setItem('gasUrl', syncUrl);
+  if (syncUrl) { startSync(); } else { stopSync(); setSyncStatus('dim','Not connected'); }
+}
+
+function setSyncStatus(state, msg) {
+  const dot = document.getElementById('sync-dot');
+  const lbl = document.getElementById('sync-label');
+  if (!dot || !lbl) return;
+  dot.className = 'sync-dot' + (state==='ok'?' ok':state==='err'?' err':state==='busy'?' busy':'');
+  lbl.textContent = msg;
+}
+
+function stateToPayload() {
+  return {
+    teams:        JSON.stringify(teams),
+    signedOut:    JSON.stringify(signedOut),
+    signedIn:     JSON.stringify(signedIn),
+    participants: JSON.stringify(participants)
+  };
+}
+
+function payloadToState(data) {
+  try { if (data.teams)        teams        = JSON.parse(data.teams); } catch(e){}
+  try { if (data.signedOut)    signedOut    = JSON.parse(data.signedOut); } catch(e){}
+  try { if (data.signedIn)     signedIn     = JSON.parse(data.signedIn); } catch(e){}
+  try { if (data.participants) participants = JSON.parse(data.participants); } catch(e){}
+}
+
+function payloadHash(p) { return JSON.stringify(p); }
+
+async function pushState() {
+  if (!syncUrl || syncBusy) return;
+  const payload = stateToPayload();
+  const hash = payloadHash(payload);
+  if (hash === lastPushHash) return; // nothing changed
+  syncBusy = true;
+  setSyncStatus('busy', 'Saving…');
+  try {
+    const resp = await fetch(syncUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action:'writeAll', payload })
+    });
+    const json = await resp.json();
+    if (json.ok) { lastPushHash = hash; setSyncStatus('ok', 'Saved · ' + new Date().toLocaleTimeString('en-GB')); }
+    else setSyncStatus('err', 'Save error');
+  } catch(e) { setSyncStatus('err', 'Network error'); }
+  syncBusy = false;
+}
+
+async function pullState() {
+  if (!syncUrl || syncBusy) return;
+  syncBusy = true;
+  setSyncStatus('busy', 'Syncing…');
+  try {
+    const resp = await fetch(syncUrl + '?action=read');
+    const json = await resp.json();
+    if (json.ok && json.data) {
+      const incoming = payloadHash(json.data);
+      if (incoming !== lastPushHash) {
+        payloadToState(json.data);
+        lastPushHash = incoming;
+        renderAll();
+        setSyncStatus('ok', 'Synced · ' + new Date().toLocaleTimeString('en-GB'));
+      } else {
+        setSyncStatus('ok', 'Live · ' + new Date().toLocaleTimeString('en-GB'));
+      }
+    } else setSyncStatus('err', 'Read error');
+  } catch(e) { setSyncStatus('err', 'Network error'); }
+  syncBusy = false;
+}
+
+function forcePush() { lastPushHash = ''; pushState(); }
+function forcePull() { pullState(); }
+
+function startSync() {
+  stopSync();
+  setSyncStatus('busy', 'Connecting…');
+  pullState(); // immediate pull on connect
+  pullInterval = setInterval(pullState, 5000); // pull every 5s
+}
+
+function stopSync() {
+  if (pullInterval) { clearInterval(pullInterval); pullInterval = null; }
+}
+
+// ── BOOT ─────────────────────────────────────────────────────────────────────
+function renderAll() {
+  renderTeams();
+  renderSignIn();
+  renderSignOut();
+  Object.keys(WALKS).forEach(renderWalk);
+  pushState(); // push any changes after every render
+}
+
+// Restore saved URL
+const savedUrl = localStorage.getItem('gasUrl');
+if (savedUrl) {
+  document.getElementById('gas-url').value = savedUrl;
+  syncUrl = savedUrl;
+}
+
+renderAll();
+
+// Start sync if URL already saved
+if (syncUrl) startSync();
+</script>
+</body>
+</html>
